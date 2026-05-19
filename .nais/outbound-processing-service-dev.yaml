@@ -61,9 +61,4 @@ spec:
     paths:
       - kvPath: /serviceuser/data/dev/srvtokt
         mountPath: /secret/serviceuser
-  accessPolicy:
-    outbound:
-      rules:
-    inbound:
-      rules:
   env:
