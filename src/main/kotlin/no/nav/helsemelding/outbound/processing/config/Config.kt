@@ -1,24 +1,25 @@
 package no.nav.helsemelding.outbound.processing.config
 
 import com.sksamuel.hoplite.Masked
-import io.github.nomisRev.kafka.publisher.PublisherSettings
-import io.github.nomisRev.kafka.receiver.AutoOffsetReset
-import io.github.nomisRev.kafka.receiver.ReceiverSettings
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.kafka.common.serialization.StringSerializer
+import no.nav.helsemelding.outbound.processing.stream.OutboundMessageTopology
+import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.serialization.Serdes.ByteArraySerde
+import org.apache.kafka.common.serialization.Serdes.StringSerde
+import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StreamsConfig
 import java.util.Properties
 import kotlin.time.Duration
 
 data class Config(
-    val kafka: Kafka,
+    val kafkaStreamsSettings: KafkaStreamsSettings,
     val server: Server
 )
 
-data class Kafka(
-    val groupId: String,
+data class KafkaStreamsSettings(
+    val applicationId: String,
     val bootstrapServers: String,
+    val defaultKeySerde: KeySerde = KeySerde(),
+    val defaultValueSerde: ValueSerde = ValueSerde(),
     val securityProtocol: SecurityProtocol,
     val keystoreType: KeystoreType,
     val keystoreLocation: KeystoreLocation,
@@ -28,13 +29,18 @@ data class Kafka(
     val truststorePassword: Masked,
     val topics: Topics
 ) {
-    private val securityProtocolConfig = "security.protocol"
     private val sslKeystoreTypeConfig = "ssl.keystore.type"
     private val sslKeystoreLocationConfig = "ssl.keystore.location"
     private val sslKeystorePasswordConfig = "ssl.keystore.password"
     private val sslTruststoreTypeConfig = "ssl.truststore.type"
     private val sslTruststoreLocationConfig = "ssl.truststore.location"
     private val sslTruststorePasswordConfig = "ssl.truststore.password"
+
+    @JvmInline
+    value class KeySerde(val value: String = StringSerde().javaClass.name)
+
+    @JvmInline
+    value class ValueSerde(val value: String = ByteArraySerde().javaClass.name)
 
     @JvmInline
     value class SecurityProtocol(val value: String)
@@ -51,30 +57,19 @@ data class Kafka(
     @JvmInline
     value class TruststoreLocation(val value: String)
 
-    fun toPublisherSettings(): PublisherSettings<String, ByteArray> =
-        PublisherSettings(
-            bootstrapServers = bootstrapServers,
-            keySerializer = StringSerializer(),
-            valueSerializer = ByteArraySerializer(),
-            properties = toProperties()
+    fun toKafkaStreams(topology: OutboundMessageTopology): KafkaStreams =
+        KafkaStreams(
+            topology.build(),
+            toProperties()
         )
 
-    fun toReceiverSettings(
-        kafka: Kafka,
-        autoOffsetReset: AutoOffsetReset
-    ): ReceiverSettings<String, ByteArray> =
-        ReceiverSettings(
-            bootstrapServers = kafka.bootstrapServers,
-            keyDeserializer = StringDeserializer(),
-            valueDeserializer = ByteArrayDeserializer(),
-            groupId = kafka.groupId,
-            properties = kafka.toProperties(),
-            autoOffsetReset = autoOffsetReset
-        )
-
-    private fun toProperties() = Properties()
+    fun toProperties() = Properties()
         .apply {
-            put(securityProtocolConfig, securityProtocol.value)
+            put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId)
+            put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+            put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, defaultKeySerde.value)
+            put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, defaultValueSerde.value)
+            put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol.value)
             put(sslKeystoreTypeConfig, keystoreType.value)
             put(sslKeystoreLocationConfig, keystoreLocation.value)
             put(sslKeystorePasswordConfig, keystorePassword.value)
@@ -86,7 +81,8 @@ data class Kafka(
 
 data class Topics(
     val dialogMessageIn: String,
-    val dialogMessageOut: String
+    val dialogMessageOut: String,
+    val dialogMessageError: String
 )
 
 data class Server(
