@@ -1,6 +1,6 @@
 # helsemelding-outbound-processing-service
 
-Processes outbound messages from Kafka by validating records, converting message payloads from JSON to XML, and routing them to either an outbound topic or an error topic.
+Processes outbound messages from Kafka by validating records, converting message payloads from JSON to XML, and routing them to either an outbound topic or an error topic. Messages sent to the outbound topic are picked up by `helsemelding-outbound-message-service`, which forwards them to the NHN Messages API for further processing.
 
 ## Processing
 
