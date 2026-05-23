@@ -17,11 +17,12 @@ class OutboundMessageProcessorSpec : StringSpec(
             val key = Uuid.random().toString()
             val payload = """{"hello":"world"}""".encodeToByteArray()
             val headers = RecordHeaders()
-                .add("sourcesystem", "some-system".encodeToByteArray())
+                .add("sourceSystem", "some-system".encodeToByteArray())
 
             val record = mockk<FixedKeyRecord<String, ByteArray>> {
                 every { key() } returns key
                 every { value() } returns payload
+                every { timestamp() } returns 123456789L
                 every { headers() } returns headers
                 every { withValue(any<ProcessedMessage>()) } answers {
                     mockk<FixedKeyRecord<String, ProcessedMessage>> {

@@ -162,16 +162,20 @@ sealed interface RecordMetadataValidation : Validation {
     }
 }
 
-private const val SOURCE_SYSTEM_HEADER = "sourcesystem"
+private const val SOURCE_SYSTEM_HEADER = "sourceSystem"
 
-internal fun validateRecordMetadata(
-    headers: Headers
-): RecordMetadataValidation =
-    when {
-        headers.lastHeader(SOURCE_SYSTEM_HEADER) == null ->
+internal fun validateRecordMetadata(headers: Headers): RecordMetadataValidation {
+    val sourceSystem = headers
+        .lastHeader(SOURCE_SYSTEM_HEADER)
+        ?.value()
+        ?.decodeToString()
+
+    return when {
+        sourceSystem.isNullOrBlank() ->
             RecordMetadataValidation.Invalid(
-                "Kafka record header '$SOURCE_SYSTEM_HEADER' is missing"
+                "Kafka record header '$SOURCE_SYSTEM_HEADER' is missing or empty"
             )
 
         else -> RecordMetadataValidation.Valid
     }
+}

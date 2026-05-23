@@ -43,7 +43,7 @@ class OutboundMessageTopologySpec : StringSpec(
                 val key = Uuid.random().toString()
                 val payload = """{"hello":"world"}""".encodeToByteArray()
                 val headers = RecordHeaders()
-                    .add("sourcesystem", "some-system".encodeToByteArray())
+                    .add("sourceSystem", "some-system".encodeToByteArray())
 
                 inputTopic.pipeInput(
                     TestRecord(

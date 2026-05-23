@@ -12,13 +12,12 @@ data class ProcessedMessage(
     val key: String?,
     val payload: ByteArray,
     val createdAt: Instant,
+    val processedAt: Instant,
     val validation: OutboundMessageValidation
 ) {
     fun isValid(): Boolean = validation.isValid()
 
-    fun errors(
-        processedAt: Instant = Clock.System.now()
-    ): List<ErrorMessage> =
+    fun errors(): List<ErrorMessage> =
         validation.errors().map { error ->
             ErrorMessage(
                 processedAt = processedAt,
@@ -54,7 +53,8 @@ class OutboundMessageProcessor(
                     key = record.key(),
                     payload = record.value(),
                     validation = validation,
-                    createdAt = Clock.System.now()
+                    createdAt = Instant.fromEpochMilliseconds(record.timestamp()),
+                    processedAt = Clock.System.now()
                 )
             )
         )
