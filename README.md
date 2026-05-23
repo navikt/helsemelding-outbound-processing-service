@@ -17,7 +17,7 @@ The service validates:
 
 - Kafka record key must be a valid UUID
 - Kafka record value must be a valid JSON object
-- Kafka record must contain a `sourcesystem` header
+- Kafka record must contain a `sourceSystem` header
 
 ## Flow
 
