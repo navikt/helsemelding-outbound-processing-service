@@ -28,7 +28,7 @@ class OutboundMessageTopology(
         stream<String, String>(config().kafkaStreamsSettings.topics.dialogMessageIn)
             .peek { key, value ->
                 log.info {
-                    "Received message: key=$key payload=$value"
+                    "Received message: key=$key value=$value"
                 }
             }
             .processValues(
@@ -41,7 +41,7 @@ class OutboundMessageTopology(
         filter { _, value -> value.isValid() }
             .peek { key, value ->
                 log.info {
-                    "Message passed outbound validation: key=$key payload${value.payload}"
+                    "Message passed outbound validation: key=$key payload=${value.payload}"
                 }
             }
             .toXmlPayload()
