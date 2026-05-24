@@ -25,10 +25,10 @@ class OutboundMessageTopology(
     }
 
     private fun StreamsBuilder.processOutboundMessages(): KStream<String, ProcessedMessage> =
-        stream<String, ByteArray>(config().kafkaStreamsSettings.topics.dialogMessageIn)
+        stream<String, String>(config().kafkaStreamsSettings.topics.dialogMessageIn)
             .peek { key, value ->
                 log.info {
-                    "Received message key=$key payloadSize=${value.size} bytes"
+                    "Received message: key=$key payload=$value"
                 }
             }
             .processValues(
@@ -41,7 +41,7 @@ class OutboundMessageTopology(
         filter { _, value -> value.isValid() }
             .peek { key, value ->
                 log.info {
-                    "Message passed outbound validation: key=$key payloadSize=${value.payload.size} bytes"
+                    "Message passed outbound validation: key=$key payload${value.payload}"
                 }
             }
             .toXmlPayload()
@@ -61,12 +61,12 @@ class OutboundMessageTopology(
             }
             .flatMapValues(ProcessedMessage::errors)
             .mapValues { errorMessage ->
-                Json.encodeToString(errorMessage).encodeToByteArray()
+                Json.encodeToString(errorMessage)
             }
             .to(config().kafkaStreamsSettings.topics.dialogMessageError)
     }
 
-    private fun KStream<String, ProcessedMessage>.toXmlPayload(): KStream<String, ByteArray> =
+    private fun KStream<String, ProcessedMessage>.toXmlPayload(): KStream<String, String> =
         mapValues { message ->
             // jsonToXmlMapper.toXml(message.payload)
             message.payload

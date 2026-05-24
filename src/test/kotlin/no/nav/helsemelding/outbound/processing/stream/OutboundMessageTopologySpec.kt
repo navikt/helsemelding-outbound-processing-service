@@ -25,23 +25,23 @@ class OutboundMessageTopologySpec : StringSpec(
                 val inputTopic = driver.createInputTopic(
                     kafkaStreams.topics.dialogMessageIn,
                     Serdes.String().serializer(),
-                    Serdes.ByteArray().serializer()
+                    Serdes.String().serializer()
                 )
 
                 val outboundTopic = driver.createOutputTopic(
                     kafkaStreams.topics.dialogMessageOut,
                     Serdes.String().deserializer(),
-                    Serdes.ByteArray().deserializer()
+                    Serdes.String().deserializer()
                 )
 
                 val errorTopic = driver.createOutputTopic(
                     kafkaStreams.topics.dialogMessageError,
                     Serdes.String().deserializer(),
-                    Serdes.ByteArray().deserializer()
+                    Serdes.String().deserializer()
                 )
 
                 val key = Uuid.random().toString()
-                val payload = """{"hello":"world"}""".encodeToByteArray()
+                val payload = """{"hello":"world"}"""
                 val headers = RecordHeaders()
                     .add("sourceSystem", "some-system".encodeToByteArray())
 
@@ -72,23 +72,23 @@ class OutboundMessageTopologySpec : StringSpec(
                 val inputTopic = driver.createInputTopic(
                     kafkaStreams.topics.dialogMessageIn,
                     Serdes.String().serializer(),
-                    Serdes.ByteArray().serializer()
+                    Serdes.String().serializer()
                 )
 
                 val outboundTopic = driver.createOutputTopic(
                     kafkaStreams.topics.dialogMessageOut,
                     Serdes.String().deserializer(),
-                    Serdes.ByteArray().deserializer()
+                    Serdes.String().deserializer()
                 )
 
                 val errorTopic = driver.createOutputTopic(
                     kafkaStreams.topics.dialogMessageError,
                     Serdes.String().deserializer(),
-                    Serdes.ByteArray().deserializer()
+                    Serdes.String().deserializer()
                 )
 
                 val key = "not-a-uuid"
-                val payload = "<xml></xml>".encodeToByteArray()
+                val payload = "<xml></xml>"
                 val headers = RecordHeaders()
 
                 inputTopic.pipeInput(
@@ -107,7 +107,7 @@ class OutboundMessageTopologySpec : StringSpec(
 
                 errors.map { it.key() }.distinct() shouldBe listOf(key)
 
-                errors.joinToString { it.value().decodeToString() }
+                errors.joinToString { it.value() }
                     .also { json ->
                         json shouldContain "INVALID_KAFKA_KEY"
                         json shouldContain "INVALID_KAFKA_VALUE"

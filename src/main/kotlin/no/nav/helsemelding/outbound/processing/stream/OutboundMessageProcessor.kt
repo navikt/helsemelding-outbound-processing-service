@@ -10,7 +10,7 @@ import kotlin.time.Instant
 
 data class ProcessedMessage(
     val key: String?,
-    val payload: ByteArray,
+    val payload: String,
     val createdAt: Instant,
     val processedAt: Instant,
     val validation: OutboundMessageValidation
@@ -25,7 +25,7 @@ data class ProcessedMessage(
                 originalMessage = OriginalMessage(
                     createdAt = createdAt,
                     key = key.orEmpty(),
-                    payload = payload.decodeToString()
+                    payload = payload
                 )
             )
         }
@@ -33,14 +33,14 @@ data class ProcessedMessage(
 
 class OutboundMessageProcessor(
     private val validator: OutboundMessageValidator
-) : FixedKeyProcessor<String, ByteArray, ProcessedMessage> {
+) : FixedKeyProcessor<String, String, ProcessedMessage> {
     private lateinit var context: FixedKeyProcessorContext<String, ProcessedMessage>
 
     override fun init(context: FixedKeyProcessorContext<String, ProcessedMessage>) {
         this.context = context
     }
 
-    override fun process(record: FixedKeyRecord<String, ByteArray>) {
+    override fun process(record: FixedKeyRecord<String, String>) {
         val validation = validator.validate(
             key = record.key(),
             value = record.value(),

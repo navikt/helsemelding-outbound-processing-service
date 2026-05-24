@@ -3,8 +3,6 @@ package no.nav.helsemelding.outbound.processing.config
 import com.sksamuel.hoplite.Masked
 import no.nav.helsemelding.outbound.processing.stream.OutboundMessageTopology
 import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.common.serialization.Serdes.ByteArraySerde
-import org.apache.kafka.common.serialization.Serdes.StringSerde
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsConfig
 import java.util.Properties
@@ -18,8 +16,8 @@ data class Config(
 data class KafkaStreamsSettings(
     val applicationId: String,
     val bootstrapServers: String,
-    val defaultKeySerde: KeySerde = KeySerde(),
-    val defaultValueSerde: ValueSerde = ValueSerde(),
+    val defaultKeySerde: KeySerde,
+    val defaultValueSerde: ValueSerde,
     val securityProtocol: SecurityProtocol,
     val keystoreType: KeystoreType,
     val keystoreLocation: KeystoreLocation,
@@ -37,10 +35,10 @@ data class KafkaStreamsSettings(
     private val sslTruststorePasswordConfig = "ssl.truststore.password"
 
     @JvmInline
-    value class KeySerde(val value: String = StringSerde().javaClass.name)
+    value class KeySerde(val value: String)
 
     @JvmInline
-    value class ValueSerde(val value: String = ByteArraySerde().javaClass.name)
+    value class ValueSerde(val value: String)
 
     @JvmInline
     value class SecurityProtocol(val value: String)

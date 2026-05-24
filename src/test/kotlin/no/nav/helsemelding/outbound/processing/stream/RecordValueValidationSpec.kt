@@ -12,18 +12,18 @@ class RecordValueValidationSpec : StringSpec(
         }
 
         "should return invalid when value is empty" {
-            validateRecordValue(ByteArray(0)) shouldBe RecordValueValidation.Invalid(
+            validateRecordValue(String()) shouldBe RecordValueValidation.Invalid(
                 "Kafka record value is empty"
             )
         }
 
         "should return invalid when value is not valid json" {
-            validateRecordValue("<xml></xml>".encodeToByteArray()) shouldBe
+            validateRecordValue("<xml></xml>") shouldBe
                 RecordValueValidation.Invalid("Kafka record value is not valid JSON")
         }
 
         "should return valid when value is valid json" {
-            validateRecordValue("""{"hello":"world"}""".encodeToByteArray()) shouldBe
+            validateRecordValue("""{"hello":"world"}""") shouldBe
                 RecordValueValidation.Valid
         }
     }

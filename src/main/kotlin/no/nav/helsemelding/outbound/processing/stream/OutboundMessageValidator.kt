@@ -66,7 +66,7 @@ fun OutboundMessageValidation.errors(): List<ProcessingError> =
 class OutboundMessageValidator {
     fun validate(
         key: String?,
-        value: ByteArray?,
+        value: String?,
         headers: Headers
     ): OutboundMessageValidation =
         OutboundMessageValidation(
@@ -123,7 +123,7 @@ sealed interface RecordValueValidation : Validation {
 
 // NOTE: Should also validate the JSON schema
 internal fun validateRecordValue(
-    value: ByteArray?
+    value: String?
 ): RecordValueValidation =
     when {
         value == null ->
@@ -144,9 +144,9 @@ internal fun validateRecordValue(
         else -> RecordValueValidation.Valid
     }
 
-private fun ByteArray.isValidJson(): Boolean =
+private fun String.isValidJson(): Boolean =
     Either.catch {
-        Json.parseToJsonElement(decodeToString()) is JsonObject
+        Json.parseToJsonElement(this) is JsonObject
     }
         .getOrElse { false }
 
