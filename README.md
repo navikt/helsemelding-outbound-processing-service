@@ -44,20 +44,29 @@ Topic    Topic
 
 Invalid messages are not forwarded.
 
-Instead, one structured error event is published per validation failure:
+Instead, one structured error event is published per invalid message, containing one or more validation errors:
 
 ```json
 {
   "processedAt": "2026-05-21T12:15:42.184Z",
-  "error": {
-    "category": "VALIDATION",
-    "code": "INVALID_KAFKA_KEY",
-    "message": "Kafka record key is not a valid UUID"
-  },
+  "errors": [
+    {
+      "category": "VALIDATION",
+      "code": "INVALID_KAFKA_KEY",
+      "message": "Kafka record key is not a valid UUID"
+    },
+    {
+      "category": "VALIDATION",
+      "code": "MISSING_SOURCE_SYSTEM_HEADER",
+      "message": "Kafka record is missing sourceSystem header"
+    }
+  ],
   "originalMessage": {
+    "topic": "input-topic",
+    "partition": 1,
+    "offset": 12345,
     "createdAt": "2026-05-21T12:15:41.901Z",
-    "key": "not-a-uuid",
-    "payload": "<xml></xml>"
+    "key": "not-a-uuid"
   }
 }
 ```

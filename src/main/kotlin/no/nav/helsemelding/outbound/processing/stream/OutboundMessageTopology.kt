@@ -52,14 +52,14 @@ class OutboundMessageTopology(
         filterNot { _, value -> value.isValid() }
             .peek { key, value ->
                 log.warn {
-                    val errors = value.errors()
-                        .joinToString { errorMessage ->
-                            "${errorMessage.error.code}: ${errorMessage.error.message}"
+                    val errors = value.error().errors
+                        .joinToString { error ->
+                            "${error.code}: ${error.message}"
                         }
                     "Message rejected by outbound validation: key=$key errors=[$errors]"
                 }
             }
-            .flatMapValues(ProcessedMessage::errors)
+            .mapValues(ProcessedMessage::error)
             .mapValues { errorMessage ->
                 Json.encodeToString(errorMessage)
             }

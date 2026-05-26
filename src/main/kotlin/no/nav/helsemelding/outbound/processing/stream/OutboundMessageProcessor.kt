@@ -17,18 +17,16 @@ data class ProcessedMessage(
 ) {
     fun isValid(): Boolean = validation.isValid()
 
-    fun errors(): List<ErrorMessage> =
-        validation.errors().map { error ->
-            ErrorMessage(
-                processedAt = processedAt,
-                error = error,
-                originalMessage = OriginalMessage(
-                    createdAt = createdAt,
-                    key = key.orEmpty(),
-                    payload = payload
-                )
+    fun error(): ErrorMessage =
+        ErrorMessage(
+            processedAt = processedAt,
+            errors = validation.errors(),
+            originalMessage = OriginalMessage(
+                createdAt = createdAt,
+                key = key.orEmpty(),
+                payload = payload
             )
-        }
+        )
 }
 
 class OutboundMessageProcessor(

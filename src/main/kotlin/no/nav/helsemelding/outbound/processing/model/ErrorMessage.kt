@@ -6,6 +6,6 @@ import kotlin.time.Instant
 @Serializable
 data class ErrorMessage(
     val processedAt: Instant,
-    val error: ProcessingError,
+    val errors: List<ProcessingError>,
     val originalMessage: OriginalMessage
 )
