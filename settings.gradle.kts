@@ -20,17 +20,12 @@ dependencyResolutionManagement {
             version("kotlinx-serialization", "1.9.0")
             version("token-validation-ktor", "5.0.15")
             version("eclipse-angus", "2.0.2")
-            version("exposed", "1.0.0-rc-3")
-            version("kotlin-kafka", "0.4.1")
-            version("flyway", "11.8.0")
-            version("postgresql", "42.7.5")
+            version("kafka-streams", "4.2.0")
             version("hikari", "6.3.0")
             version("hoplite", "2.8.2")
             version("prometheus", "1.12.4")
             version("logback", "1.4.11")
             version("logstash", "7.4")
-            version("edi-adapter-client", "0.0.5")
-            version("payload-signing-client", "0.0.1")
             version("opentelemetry-mdc", "2.24.0-alpha")
             version("opentelemetry-extension-kotlin", "1.58.0")
 
@@ -61,14 +56,7 @@ dependencyResolutionManagement {
             library("ktor-server-metrics-micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
             library("micrometer-registry-prometheus", "io.micrometer", "micrometer-registry-prometheus").versionRef("prometheus")
 
-            library("exposed-jdbc", "org.jetbrains.exposed", "exposed-jdbc").versionRef("exposed")
-            library("exposed-datetime", "org.jetbrains.exposed", "exposed-kotlin-datetime").versionRef("exposed")
-
-            library("hikari", "com.zaxxer", "HikariCP").versionRef("hikari")
-            library("flyway-postgresql", "org.flywaydb", "flyway-database-postgresql").versionRef("flyway")
-            library("postgresql", "org.postgresql", "postgresql").versionRef("postgresql")
-
-            library("kotlin-kafka", "io.github.nomisrev", "kotlin-kafka").versionRef("kotlin-kafka")
+            library("kafka-streams", "org.apache.kafka", "kafka-streams").versionRef("kafka-streams")
 
             library("kotlinx-serialization-json", "org.jetbrains.kotlinx", "kotlinx-serialization-json").versionRef("kotlinx-serialization")
 
@@ -78,9 +66,6 @@ dependencyResolutionManagement {
 
             library("ktor-server-auth-jvm", "io.ktor", "ktor-server-auth-jvm").versionRef("ktor")
             library("token-validation-ktor-v3", "no.nav.security", "token-validation-ktor-v3").versionRef("token-validation-ktor")
-
-            library("edi-adapter-client", "no.nav.helsemelding", "edi-adapter-client").versionRef("edi-adapter-client")
-            library("payload-signing-client", "no.nav.helsemelding", "payload-signing-client").versionRef("payload-signing-client")
 
             library("opentelemetry-logback-mdc", "io.opentelemetry.instrumentation", "opentelemetry-logback-mdc-1.0").versionRef("opentelemetry-mdc")
             library("opentelemetry-extension-kotlin", "io.opentelemetry", "opentelemetry-extension-kotlin").versionRef("opentelemetry-extension-kotlin")
@@ -103,6 +88,8 @@ dependencyResolutionManagement {
             version("kotest", "5.9.1")
             version("testcontainers", "1.21.4")
             version("kotest-extensions", "2.0.2")
+            version("kafka-streams", "4.2.0")
+            version("mockk", "1.14.9")
             version("turbine", "1.2.0")
 
             library("ktor-server-test-host", "io.ktor", "ktor-server-test-host").versionRef("ktor-server-test")
@@ -115,6 +102,10 @@ dependencyResolutionManagement {
             library("kotest-extensions-testcontainers", "io.kotest.extensions", "kotest-extensions-testcontainers").versionRef("kotest-extensions")
 
             library("kotest-assertions-arrow", "io.kotest.extensions", "kotest-assertions-arrow").versionRef("arrow")
+
+            library("kafka-streams", "org.apache.kafka", "kafka-streams-test-utils").versionRef("kafka-streams")
+
+            library("mockk", "io.mockk", "mockk").versionRef("mockk")
 
             library("testcontainers", "org.testcontainers", "testcontainers").versionRef("testcontainers")
             library("testcontainers-postgresql", "org.testcontainers", "postgresql").versionRef("testcontainers")
