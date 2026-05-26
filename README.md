@@ -62,11 +62,11 @@ Instead, one structured error event is published per invalid message, containing
     }
   ],
   "originalMessage": {
-    "topic": "input-topic",
-    "partition": 1,
-    "offset": 12345,
     "createdAt": "2026-05-21T12:15:41.901Z",
-    "key": "not-a-uuid"
+    "key": "not-a-uuid",
+    "payload": {
+      "hello": "world"
+    }
   }
 }
 ```
