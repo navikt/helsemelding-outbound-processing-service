@@ -7,7 +7,6 @@ import kotlinx.serialization.json.JsonObject
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessingError
-import org.apache.kafka.common.header.Headers
 import kotlin.uuid.Uuid
 
 data class OutboundMessageValidation(
@@ -67,12 +66,12 @@ class OutboundMessageValidator {
     fun validate(
         key: String?,
         value: String?,
-        headers: Headers
+        sourceSystem: String?
     ): OutboundMessageValidation =
         OutboundMessageValidation(
             recordKey = validateRecordKey(key),
             recordValue = validateRecordValue(value),
-            recordMetadata = validateRecordMetadata(headers)
+            recordMetadata = validateRecordMetadata(sourceSystem)
         )
 }
 
@@ -162,14 +161,7 @@ sealed interface RecordMetadataValidation : Validation {
     }
 }
 
-private const val SOURCE_SYSTEM_HEADER = "sourceSystem"
-
-internal fun validateRecordMetadata(headers: Headers): RecordMetadataValidation {
-    val sourceSystem = headers
-        .lastHeader(SOURCE_SYSTEM_HEADER)
-        ?.value()
-        ?.decodeToString()
-
+internal fun validateRecordMetadata(sourceSystem: String?): RecordMetadataValidation {
     return when {
         sourceSystem.isNullOrBlank() ->
             RecordMetadataValidation.Invalid(

@@ -8,9 +8,12 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+internal const val SOURCE_SYSTEM_HEADER = "sourceSystem"
+
 data class ProcessedMessage(
     val key: String?,
     val payload: String,
+    val sourceSystem: String,
     val createdAt: Instant,
     val processedAt: Instant,
     val validation: OutboundMessageValidation
@@ -20,6 +23,7 @@ data class ProcessedMessage(
     fun error(): ErrorMessage =
         ErrorMessage(
             processedAt = processedAt,
+            sourceSystem = sourceSystem,
             errors = validation.errors(),
             originalMessage = OriginalMessage(
                 createdAt = createdAt,
@@ -39,10 +43,15 @@ class OutboundMessageProcessor(
     }
 
     override fun process(record: FixedKeyRecord<String, String>) {
+        val sourceSystem = record.headers()
+            .lastHeader(SOURCE_SYSTEM_HEADER)
+            ?.value()
+            ?.decodeToString()
+
         val validation = validator.validate(
             key = record.key(),
             value = record.value(),
-            headers = record.headers()
+            sourceSystem = sourceSystem
         )
 
         context.forward(
@@ -50,6 +59,7 @@ class OutboundMessageProcessor(
                 ProcessedMessage(
                     key = record.key(),
                     payload = record.value(),
+                    sourceSystem = sourceSystem ?: "UNKNOWN",
                     validation = validation,
                     createdAt = Instant.fromEpochMilliseconds(record.timestamp()),
                     processedAt = Clock.System.now()
