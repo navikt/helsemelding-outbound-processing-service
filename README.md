@@ -49,6 +49,7 @@ Instead, one structured error event is published per invalid message, containing
 ```json
 {
   "processedAt": "2026-05-21T12:15:42.184Z",
+  "sourceSystem": "UNKNOWN",
   "errors": [
     {
       "category": "VALIDATION",
