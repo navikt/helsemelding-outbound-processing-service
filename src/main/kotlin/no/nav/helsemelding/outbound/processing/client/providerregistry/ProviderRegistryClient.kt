@@ -11,7 +11,7 @@ import io.ktor.client.statement.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import no.nav.helsemelding.message.msghead.model.provider.Provider
+import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.FetchingError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ProviderError
 import kotlin.uuid.Uuid

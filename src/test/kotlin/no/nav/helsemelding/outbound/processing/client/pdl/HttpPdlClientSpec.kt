@@ -1,5 +1,6 @@
 package no.nav.helsemelding.outbound.processing.client.pdl
 
+import arrow.core.getOrElse
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.StringSpec
@@ -17,46 +18,49 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import no.nav.helsemelding.message.msghead.model.Personident
-import no.nav.helsemelding.outbound.processing.client.pdl.HttpPdlClient.Companion.BEHANDLINGSNUMMER_HEADER_KEY
-import no.nav.helsemelding.outbound.processing.client.pdl.HttpPdlClient.Companion.BEHANDLINGSNUMMER_HEADER_VALUE
-import no.nav.helsemelding.outbound.processing.client.pdl.model.FetchingError
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlError
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlErrorExtension
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlHentPerson
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlPerson
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlPersonNavn
-import no.nav.helsemelding.outbound.processing.client.pdl.model.PdlPersonResponse
+import no.nav.helsemelding.messageconverter.msghead.model.Personident
+import no.nav.helsemelding.outbound.processing.client.pdl.model.ErrorExtension
+import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlResponseError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.HttpError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.Person
+import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonData
+import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonName
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonNotFound
-import no.nav.helsemelding.outbound.processing.client.pdl.model.QueryError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonRequest
+import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonResponse
+import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedClientError
+
+private const val PROCESSING_NUMBER_HEADER_KEY = "behandlingsnummer"
+private const val PROCESSING_NUMBER_HEADER_VALUE = ""
 
 class HttpPdlClientSpec : StringSpec({
 
-    val personident = Personident("12345678901")
+    val personident = personident("12345678901")
 
     "status OK and valid data should return requested name of person" {
-        val name = PdlPersonNavn(
-            fornavn = "Ola",
-            mellomnavn = "Jens",
-            etternavn = "Nordmann"
+        val name = PersonName(
+            firstName = "Ola",
+            middleName = "Jens",
+            lastName = "Nordmann"
         )
-        val pdlPersonResponse = PdlPersonResponse(
+        val personResponse = PersonResponse(
             errors = emptyList(),
-            data = PdlHentPerson(
-                hentPerson = PdlPerson(
-                    navn = listOf(name)
+            data = PersonData(
+                person = Person(
+                    names = listOf(name)
                 )
             )
         )
         val client = testClient { request ->
-            request.method shouldBe HttpMethod.Post
-            request.headers[BEHANDLINGSNUMMER_HEADER_KEY] shouldBe BEHANDLINGSNUMMER_HEADER_VALUE
+            request.shouldBePdlPersonRequest(personident)
 
             respond(
-                content = Json.encodeToString(pdlPersonResponse),
+                content = Json.encodeToString(personResponse),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             )
@@ -64,21 +68,20 @@ class HttpPdlClientSpec : StringSpec({
 
         val response = client.getPersonName(personident)
 
-        val pdlPersonNavn = response.shouldBeRight()
-        pdlPersonNavn shouldBe name
+        val personName = response.shouldBeRight()
+        personName shouldBe name
     }
 
-    "status OK and errors not empty should return QueryError" {
-        val pdlPersonResponse = PdlPersonResponse(
-            errors = listOf(generatePdlError("not_found")),
+    "status OK and errors not empty should return GraphQlError" {
+        val personResponse = PersonResponse(
+            errors = listOf(generateGraphQlResponseError("not_found")),
             data = null
         )
         val client = testClient { request ->
-            request.method shouldBe HttpMethod.Post
-            request.headers[BEHANDLINGSNUMMER_HEADER_KEY] shouldBe BEHANDLINGSNUMMER_HEADER_VALUE
+            request.shouldBePdlPersonRequest(personident)
 
             respond(
-                content = Json.encodeToString(pdlPersonResponse),
+                content = Json.encodeToString(personResponse),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             )
@@ -87,31 +90,30 @@ class HttpPdlClientSpec : StringSpec({
         val response = client.getPersonName(personident)
 
         val error = response.shouldBeLeft()
-        val personNotFoundError = error.shouldBeInstanceOf<QueryError>()
+        val personNotFoundError = error.shouldBeInstanceOf<GraphQlError>()
         personNotFoundError.message shouldBe "Error while requesting person from PersonDataLosningen"
-        personNotFoundError.errors!!.size shouldBe 1
+        personNotFoundError.errors.size shouldBe 1
     }
 
     withData(
         nameFn = { "status OK and ${it.first} should return PersonNotFound" },
-        "data is null" to PdlPersonResponse(
+        "data is null" to PersonResponse(
             errors = emptyList(),
             data = null
         ),
-        "data.hentPerson is null" to PdlPersonResponse(
+        "data.hentPerson is null" to PersonResponse(
             errors = emptyList(),
-            data = PdlHentPerson(
-                hentPerson = null
+            data = PersonData(
+                person = null
             )
         )
     ) {
-        val pdlPersonResponse = it.second
+        val personResponse = it.second
         val client = testClient { request ->
-            request.method shouldBe HttpMethod.Post
-            request.headers[BEHANDLINGSNUMMER_HEADER_KEY] shouldBe BEHANDLINGSNUMMER_HEADER_VALUE
+            request.shouldBePdlPersonRequest(personident)
 
             respond(
-                content = Json.encodeToString(pdlPersonResponse),
+                content = Json.encodeToString(personResponse),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             )
@@ -125,20 +127,19 @@ class HttpPdlClientSpec : StringSpec({
     }
 
     "status OK and empty navn list should return PersonNotFound" {
-        val pdlPersonResponse = PdlPersonResponse(
+        val personResponse = PersonResponse(
             errors = emptyList(),
-            data = PdlHentPerson(
-                hentPerson = PdlPerson(
-                    navn = emptyList()
+            data = PersonData(
+                person = Person(
+                    names = emptyList()
                 )
             )
         )
         val client = testClient { request ->
-            request.method shouldBe HttpMethod.Post
-            request.headers[BEHANDLINGSNUMMER_HEADER_KEY] shouldBe BEHANDLINGSNUMMER_HEADER_VALUE
+            request.shouldBePdlPersonRequest(personident)
 
             respond(
-                content = Json.encodeToString(pdlPersonResponse),
+                content = Json.encodeToString(personResponse),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
             )
@@ -151,7 +152,7 @@ class HttpPdlClientSpec : StringSpec({
         personNotFoundError.message shouldBe "Person not found: navn empty"
     }
 
-    "status not OK should return FetchingError" {
+    "status not OK should return HttpError" {
         val client = testClient {
             respond(
                 content = "Service Unavailable",
@@ -162,16 +163,43 @@ class HttpPdlClientSpec : StringSpec({
         val response = client.getPersonName(personident)
 
         val error = response.shouldBeLeft()
-        val fetchingError = error.shouldBeInstanceOf<FetchingError>()
-        fetchingError.code shouldBe HttpStatusCode.ServiceUnavailable.value
+        val fetchingError = error.shouldBeInstanceOf<HttpError>()
+        fetchingError.statusCode shouldBe HttpStatusCode.ServiceUnavailable.value
         fetchingError.message shouldBe "Service Unavailable"
+    }
+
+    "request failure should return UnexpectedClientError" {
+        val client = testClient {
+            throw RuntimeException("PDL unavailable")
+        }
+
+        val response = client.getPersonName(personident)
+
+        val error = response.shouldBeLeft()
+        val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+        unexpectedError.message shouldBe "Failed to request person from PersonDataLosningen: PDL unavailable"
+    }
+
+    "status OK and invalid response body should return UnexpectedClientError" {
+        val client = testClient {
+            respond(
+                content = "not json",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            )
+        }
+
+        val response = client.getPersonName(personident)
+
+        val error = response.shouldBeLeft()
+        error.shouldBeInstanceOf<UnexpectedClientError>()
     }
 })
 
 private fun testClient(
     handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
 ): PdlClient = HttpPdlClient(
-    pdlServiceUrl = "http://localhost",
+    pdlGraphqlUrl = "http://localhost",
     clientProvider = {
         HttpClient(MockEngine) {
             engine { addHandler(handler) }
@@ -188,13 +216,31 @@ private fun testClient(
     }
 )
 
-fun generatePdlError(code: String? = null) =
-    PdlError(
+private fun HttpRequestData.shouldBePdlPersonRequest(personident: Personident) {
+    method shouldBe HttpMethod.Post
+    headers[PROCESSING_NUMBER_HEADER_KEY] shouldBe PROCESSING_NUMBER_HEADER_VALUE
+
+    val pdlRequest = Json.decodeFromString<PersonRequest>(bodyAsText())
+    pdlRequest.variables.nationalIdentityNumber shouldBe personident.value
+    pdlRequest.variables.includeNameHistory shouldBe false
+}
+
+private fun HttpRequestData.bodyAsText(): String =
+    when (val outgoingContent = body) {
+        is OutgoingContent.ByteArrayContent -> outgoingContent.bytes().decodeToString()
+        else -> error("Unsupported request body: ${outgoingContent::class}")
+    }
+
+fun generateGraphQlResponseError(code: String? = null) =
+    GraphQlResponseError(
         message = "Error",
         locations = emptyList(),
         path = emptyList(),
-        extensions = PdlErrorExtension(
+        extensions = ErrorExtension(
             code = code,
             classification = "Classification"
         )
     )
+
+private fun personident(value: String): Personident =
+    Personident(value).getOrElse { error(it.message) }

@@ -1,5 +1,6 @@
 package no.nav.helsemelding.outbound.processing.client.providerregistry
 
+import arrow.core.getOrElse
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.StringSpec
@@ -21,11 +22,11 @@ import io.ktor.http.fullPath
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import no.nav.helsemelding.message.msghead.model.Personident
-import no.nav.helsemelding.message.msghead.model.provider.OrganisationNumber
-import no.nav.helsemelding.message.msghead.model.provider.Provider
-import no.nav.helsemelding.message.msghead.model.provider.ProviderCategori
-import no.nav.helsemelding.message.msghead.model.provider.ProviderOffice
+import no.nav.helsemelding.messageconverter.msghead.model.Personident
+import no.nav.helsemelding.messageconverter.msghead.model.provider.OrganisationNumber
+import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
+import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderCategory
+import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderOffice
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.FetchingError
 import java.time.OffsetDateTime
 import kotlin.uuid.Uuid
@@ -95,33 +96,39 @@ fun createProvider(
     dialogmeldingEnabled: Boolean = true,
     dialogmeldingEnabledLocked: Boolean = false,
     kontornavn: String? = null,
-    personident: Personident = Personident("13326920147"),
+    personident: Personident = personident("13326920147"),
     herId: Int? = 654321,
     hprId: Int = 7654321,
-    kategori: ProviderCategori = ProviderCategori.LEGE,
+    kategori: ProviderCategory = ProviderCategory.DOCTOR,
     orgnummer: String? = "987654321"
 ) = Provider(
-    behandlerRef = behandlerRef,
-    kontor = ProviderOffice(
+    providerReference = behandlerRef,
+    office = ProviderOffice(
         herId = 54321,
-        navn = kontornavn,
-        adresse = "Storgata 15",
-        postnummer = "0158",
-        poststed = "Oslo",
-        orgnummer = orgnummer?.let { OrganisationNumber(it) },
-        dialogmeldingEnabled = dialogmeldingEnabled,
-        dialogmeldingEnabledLocked = dialogmeldingEnabledLocked,
+        name = kontornavn,
+        address = "Storgata 15",
+        postalCode = "0158",
+        city = "Oslo",
+        organisationNumber = orgnummer?.let { organisationNumber(it) },
+        dialogMessageEnabled = dialogmeldingEnabled,
+        dialogMessageEnabledLocked = dialogmeldingEnabledLocked,
         system = null,
-        mottatt = OffsetDateTime.now()
+        receivedAt = OffsetDateTime.now()
     ),
-    personident = personident,
-    fornavn = "Kari",
-    mellomnavn = "Anne",
-    etternavn = "Hansen",
+    nationalIdentityNumber = personident,
+    firstName = "Kari",
+    middleName = "Anne",
+    lastName = "Hansen",
     herId = herId,
     hprId = hprId,
-    telefon = null,
-    kategori = kategori,
-    mottatt = OffsetDateTime.now(),
-    suspendert = false
+    phoneNumber = null,
+    category = kategori,
+    receivedAt = OffsetDateTime.now(),
+    suspended = false
 )
+
+private fun personident(value: String): Personident =
+    Personident(value).getOrElse { error(it.message) }
+
+private fun organisationNumber(value: String): OrganisationNumber =
+    OrganisationNumber(value).getOrElse { error(it.message) }
