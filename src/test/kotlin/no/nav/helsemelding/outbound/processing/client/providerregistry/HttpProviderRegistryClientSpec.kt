@@ -27,7 +27,8 @@ import no.nav.helsemelding.messageconverter.msghead.model.provider.OrganisationN
 import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
 import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderCategory
 import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderOffice
-import no.nav.helsemelding.outbound.processing.client.providerregistry.model.FetchingError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.HttpError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedClientError
 import java.time.OffsetDateTime
 import kotlin.uuid.Uuid
 
@@ -54,7 +55,7 @@ class HttpProviderRegistryClientSpec : StringSpec({
         provider shouldBeEqualUsingFields testProvider
     }
 
-    "status not OK should return FetchingError" {
+    "status not OK should return HttpError" {
         val client = testClient {
             respond(
                 content = "Provider not found",
@@ -65,16 +66,43 @@ class HttpProviderRegistryClientSpec : StringSpec({
         val response = client.getProvider(Uuid.random())
 
         val error = response.shouldBeLeft()
-        val fetchingError = error.shouldBeInstanceOf<FetchingError>()
-        fetchingError.code shouldBe HttpStatusCode.NotFound.value
-        fetchingError.message shouldBe "Provider not found"
+        val httpError = error.shouldBeInstanceOf<HttpError>()
+        httpError.statusCode shouldBe HttpStatusCode.NotFound.value
+        httpError.message shouldBe "Provider not found"
+    }
+
+    "request failure should return UnexpectedClientError" {
+        val client = testClient {
+            throw RuntimeException("ProviderRegistry unavailable")
+        }
+
+        val response = client.getProvider(Uuid.random())
+
+        val error = response.shouldBeLeft()
+        val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+        unexpectedError.message shouldBe "Failed to request provider from ProviderRegistry: ProviderRegistry unavailable"
+    }
+
+    "status OK and invalid response body should return UnexpectedClientError" {
+        val client = testClient {
+            respond(
+                content = "not json",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            )
+        }
+
+        val response = client.getProvider(Uuid.random())
+
+        val error = response.shouldBeLeft()
+        error.shouldBeInstanceOf<UnexpectedClientError>()
     }
 })
 
 private fun testClient(
     handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
 ): ProviderRegistryClient = HttpProviderRegistryClient(
-    providerRegistryServiceUrl = "http://localhost",
+    providerRegistryBaseUrl = "http://localhost",
     clientProvider = {
         HttpClient(MockEngine) {
             engine { addHandler(handler) }
