@@ -26,8 +26,7 @@ dependencyResolutionManagement {
             version("logstash", "7.4")
             version("opentelemetry-mdc", "2.24.0-alpha")
             version("opentelemetry-extension-kotlin", "1.58.0")
-            version("message-converter", "0.0.2")
-            version("json-schema-core", "0.0.3")
+            version("message-converter", "0.0.4")
 
             library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")
             library("arrow-functions", "io.arrow-kt", "arrow-functions").versionRef("arrow")
@@ -66,7 +65,6 @@ dependencyResolutionManagement {
             library("opentelemetry-extension-kotlin", "io.opentelemetry", "opentelemetry-extension-kotlin").versionRef("opentelemetry-extension-kotlin")
 
             library("message-converter", "no.nav.helsemelding", "message-converter").versionRef("message-converter")
-            library("json-schema-core", "no.nav.helsemelding", "json-schema-core").versionRef("json-schema-core")
 
             bundle("prometheus", listOf("ktor-server-metrics-micrometer", "micrometer-registry-prometheus"))
             bundle("logging", listOf("logback-classic", "logback-logstash"))
