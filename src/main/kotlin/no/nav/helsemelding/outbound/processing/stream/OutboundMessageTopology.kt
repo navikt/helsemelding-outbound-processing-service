@@ -68,7 +68,7 @@ class OutboundMessageTopology(
 
     private fun KStream<String, ProcessedMessage>.toXmlPayload(): KStream<String, String> =
         mapValues { message ->
-            // jsonToXmlMapper.toXml(message.payload)
+            // msgHeadMessageConverter.outgoingDialogMessageJsonToXml(message.payload)
             message.payload
         }
 }

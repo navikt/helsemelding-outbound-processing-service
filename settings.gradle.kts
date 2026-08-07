@@ -12,8 +12,6 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("arrow", "2.0.1")
-            version("jwt", "4.4.0")
-            version("nimbus-jwt", "9.31")
             version("suspendapp", "0.5.0")
             version("ktor", "3.0.3")
             version("kotlin-logging", "7.0.3")
@@ -28,6 +26,8 @@ dependencyResolutionManagement {
             version("logstash", "7.4")
             version("opentelemetry-mdc", "2.24.0-alpha")
             version("opentelemetry-extension-kotlin", "1.58.0")
+            version("message-converter", "0.0.2")
+            version("json-schema-core", "0.0.3")
 
             library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")
             library("arrow-functions", "io.arrow-kt", "arrow-functions").versionRef("arrow")
@@ -39,9 +39,6 @@ dependencyResolutionManagement {
             library("hoplite-core", "com.sksamuel.hoplite", "hoplite-core").versionRef("hoplite")
             library("hoplite-hocon", "com.sksamuel.hoplite", "hoplite-hocon").versionRef("hoplite")
 
-            library("jwt", "com.auth0", "java-jwt").versionRef("jwt")
-            library("nimbus-jwt", "com.nimbusds", "nimbus-jose-jwt").versionRef("nimbus-jwt")
-
             library("ktor-server-core", "io.ktor", "ktor-server-core").versionRef("ktor")
             library("ktor-server-netty", "io.ktor", "ktor-server-netty").versionRef("ktor")
             library("ktor-server-call-logging-jvm", "io.ktor", "ktor-server-call-logging-jvm").versionRef("ktor")
@@ -49,8 +46,6 @@ dependencyResolutionManagement {
             library("ktor-client-content-negotiation", "io.ktor", "ktor-client-content-negotiation").versionRef("ktor")
             library("ktor-serialization-kotlinx-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
             library("ktor-client-core", "io.ktor", "ktor-client-core").versionRef("ktor")
-            library("ktor-client-cio", "io.ktor", "ktor-client-cio").versionRef("ktor")
-            library("ktor-client-auth", "io.ktor", "ktor-client-auth").versionRef("ktor")
             library("ktor-client-logging", "io.ktor", "ktor-client-logging").versionRef("ktor")
 
             library("ktor-server-metrics-micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
@@ -69,6 +64,9 @@ dependencyResolutionManagement {
 
             library("opentelemetry-logback-mdc", "io.opentelemetry.instrumentation", "opentelemetry-logback-mdc-1.0").versionRef("opentelemetry-mdc")
             library("opentelemetry-extension-kotlin", "io.opentelemetry", "opentelemetry-extension-kotlin").versionRef("opentelemetry-extension-kotlin")
+
+            library("message-converter", "no.nav.helsemelding", "message-converter").versionRef("message-converter")
+            library("json-schema-core", "no.nav.helsemelding", "json-schema-core").versionRef("json-schema-core")
 
             bundle("prometheus", listOf("ktor-server-metrics-micrometer", "micrometer-registry-prometheus"))
             bundle("logging", listOf("logback-classic", "logback-logstash"))
