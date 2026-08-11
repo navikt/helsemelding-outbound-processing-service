@@ -29,3 +29,14 @@ class MsgHeadOutgoingMessageConverter(
                 .bind()
         }
 }
+
+class FakeOutgoingMessageConverter(
+    private val result: Either<ConversionError, String> = Either.Right("<xml />")
+) : OutgoingMessageConverter {
+    val payloads = mutableListOf<String>()
+
+    override suspend fun outgoingDialogMessageJsonToXml(json: String): Either<ConversionError, String> {
+        payloads.add(json)
+        return result
+    }
+}

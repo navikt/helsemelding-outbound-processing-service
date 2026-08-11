@@ -1,4 +1,4 @@
-package no.nav.helsemelding.outbound.processing.stream
+package no.nav.helsemelding.outbound.processing.validation
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

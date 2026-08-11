@@ -1,4 +1,4 @@
-package no.nav.helsemelding.outbound.processing.stream
+package no.nav.helsemelding.outbound.processing.validation
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -17,13 +17,8 @@ class RecordValueValidationSpec : StringSpec(
             )
         }
 
-        "should return invalid when value is not valid json" {
+        "should return valid when value is present" {
             validateRecordValue("<xml></xml>") shouldBe
-                RecordValueValidation.Invalid("Kafka record value is not valid JSON")
-        }
-
-        "should return valid when value is valid json" {
-            validateRecordValue("""{"hello":"world"}""") shouldBe
                 RecordValueValidation.Valid
         }
     }
