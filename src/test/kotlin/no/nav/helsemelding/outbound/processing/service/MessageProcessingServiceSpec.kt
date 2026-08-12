@@ -6,6 +6,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
 import no.nav.helsemelding.messageconverter.error.AdditionalMessageInfoError
+import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.conversion.FakeOutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
@@ -25,10 +26,12 @@ import kotlin.uuid.Uuid
 class MessageProcessingServiceSpec : StringSpec(
     {
         "should publish validation error when received message is invalid" {
+            val acknowledgement = Acknowledgement()
             val message = receivedMessage(
                 key = null,
                 payload = "",
-                sourceSystem = null
+                sourceSystem = null,
+                acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
@@ -53,11 +56,16 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             publisher.processedMessages shouldBe emptyList()
             converter.payloads shouldBe emptyList()
+            acknowledgement.acknowledged shouldBe true
         }
 
         "should convert and publish processed message when received message is valid" {
             val key = Uuid.random().toString()
-            val message = receivedMessage(key = key)
+            val acknowledgement = Acknowledgement()
+            val message = receivedMessage(
+                key = key,
+                acknowledge = acknowledgement::acknowledge
+            )
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
             val converter = FakeOutgoingMessageConverter(Either.Right("<xml />"))
@@ -77,10 +85,14 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             publisher.errorMessages shouldBe emptyList()
             converter.payloads shouldContainExactly listOf(message.payload)
+            acknowledgement.acknowledged shouldBe true
         }
 
         "should publish conversion error when conversion fails" {
-            val message = receivedMessage()
+            val acknowledgement = Acknowledgement()
+            val message = receivedMessage(
+                acknowledge = acknowledgement::acknowledge
+            )
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
             val converter = FakeOutgoingMessageConverter(
@@ -109,6 +121,42 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             publisher.processedMessages shouldBe emptyList()
             converter.payloads shouldContainExactly listOf(message.payload)
+            acknowledgement.acknowledged shouldBe true
+        }
+
+        "should not acknowledge message when publishing fails" {
+            val acknowledgement = Acknowledgement()
+            val message = receivedMessage(
+                acknowledge = acknowledgement::acknowledge
+            )
+            val receiver = FakeMessageReceiver(message)
+            val publishError = PublishError.Failure(
+                referenceId = message.key.orEmpty(),
+                topic = message.topic,
+                cause = RuntimeException("Publish failed")
+            )
+            val publisher = FakeMessagePublisher(
+                publishProcessedMessageResult = Either.Left(publishError)
+            )
+            val converter = FakeOutgoingMessageConverter(Either.Right("<xml />"))
+
+            val service = messageProcessingService(
+                receiver = receiver,
+                publisher = publisher,
+                converter = converter,
+                schemaValidator = FakeSchemaValidator()
+            )
+
+            service.processMessage(message)
+
+            publisher.processedMessages shouldContainExactly listOf(
+                ProcessedMessage(
+                    key = message.key.orEmpty(),
+                    payload = "<xml />"
+                )
+            )
+            publisher.errorMessages shouldBe emptyList()
+            acknowledgement.acknowledged shouldBe false
         }
     }
 )
@@ -129,7 +177,8 @@ private fun messageProcessingService(
 private fun receivedMessage(
     key: String? = Uuid.random().toString(),
     payload: String = """{"message":"valid"}""",
-    sourceSystem: String? = "test-system"
+    sourceSystem: String? = "test-system",
+    acknowledge: suspend () -> Unit = {}
 ): ReceivedMessage =
     ReceivedMessage(
         key = key,
@@ -138,5 +187,14 @@ private fun receivedMessage(
         createdAt = Clock.System.now(),
         topic = "topic",
         partition = 0,
-        offset = 0
+        offset = 0,
+        acknowledge = acknowledge
     )
+
+private class Acknowledgement {
+    var acknowledged = false
+
+    suspend fun acknowledge() {
+        acknowledged = true
+    }
+}

@@ -46,9 +46,9 @@ class MessageProcessingService(
 
         val validation = message.validate()
 
-        when (validation.isValid()) {
-            true -> message.publishMessage()
-            false -> message.publishErrorMessage(validation)
+        when (val result = message.publish(validation)) {
+            is Left -> result.logPublishError()
+            is Right -> message.acknowledge()
         }
     }
 
@@ -59,14 +59,22 @@ class MessageProcessingService(
             sourceSystem = sourceSystem
         )
 
-    private suspend fun ReceivedMessage.publishErrorMessage(validation: MessageValidationResult) {
+    private suspend fun ReceivedMessage.publish(
+        validation: MessageValidationResult
+    ): Either<PublishError, RecordMetadata> =
+        when (validation.isValid()) {
+            true -> publishMessage()
+            false -> publishErrorMessage(validation)
+        }
+
+    private suspend fun ReceivedMessage.publishErrorMessage(
+        validation: MessageValidationResult
+    ): Either<PublishError, RecordMetadata> =
         messagePublisher.publish(
             toErrorMessage(validation.errors())
         )
-            .logPublishError()
-    }
 
-    private suspend fun ReceivedMessage.publishMessage() {
+    private suspend fun ReceivedMessage.publishMessage(): Either<PublishError, RecordMetadata> =
         when (val result = outgoingMessageConverter.outgoingDialogMessageJsonToXml(payload)) {
             is Left ->
                 messagePublisher.publish(
@@ -76,11 +84,9 @@ class MessageProcessingService(
                         )
                     )
                 )
-                    .logPublishError()
 
-            is Right -> messagePublisher.publish(toProcessedMessage(result.value)).logPublishError()
+            is Right -> messagePublisher.publish(toProcessedMessage(result.value))
         }
-    }
 }
 
 private fun ReceivedMessage.logReceived() {

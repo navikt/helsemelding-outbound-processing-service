@@ -34,7 +34,8 @@ class OutboundMessageReceiver(
             createdAt = Instant.fromEpochMilliseconds(record.timestamp()),
             topic = record.topic(),
             partition = record.partition(),
-            offset = record.offset()
+            offset = record.offset(),
+            acknowledge = { record.offset.acknowledge() }
         )
 }
 

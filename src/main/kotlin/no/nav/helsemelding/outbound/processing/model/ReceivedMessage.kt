@@ -9,5 +9,6 @@ data class ReceivedMessage(
     val createdAt: Instant,
     val topic: String,
     val partition: Int,
-    val offset: Long
+    val offset: Long,
+    val acknowledge: suspend () -> Unit = {}
 )

@@ -54,18 +54,21 @@ class OutboundMessagePublisher(
             .toEither { error -> PublishError.Failure(referenceId, topic, error) }
 }
 
-class FakeMessagePublisher : MessagePublisher {
+class FakeMessagePublisher(
+    private val publishErrorMessageResult: Either<PublishError, RecordMetadata> = Either.Right(recordMetadata()),
+    private val publishProcessedMessageResult: Either<PublishError, RecordMetadata> = Either.Right(recordMetadata())
+) : MessagePublisher {
     val errorMessages = mutableListOf<ErrorMessage>()
     val processedMessages = mutableListOf<ProcessedMessage>()
 
     override suspend fun publish(errorMessage: ErrorMessage): Either<PublishError, RecordMetadata> {
         errorMessages.add(errorMessage)
-        return Either.Right(recordMetadata())
+        return publishErrorMessageResult
     }
 
     override suspend fun publish(processedMessage: ProcessedMessage): Either<PublishError, RecordMetadata> {
         processedMessages.add(processedMessage)
-        return Either.Right(recordMetadata())
+        return publishProcessedMessageResult
     }
 }
 
