@@ -18,7 +18,7 @@ dependencyResolutionManagement {
             version("kotlinx-serialization", "1.9.0")
             version("token-validation-ktor", "5.0.15")
             version("eclipse-angus", "2.0.2")
-            version("kafka-streams", "4.2.0")
+            version("kotlin-kafka", "0.4.1")
             version("hikari", "6.3.0")
             version("hoplite", "2.8.2")
             version("prometheus", "1.12.4")
@@ -44,13 +44,14 @@ dependencyResolutionManagement {
             library("ktor-server-content-negotiation", "io.ktor", "ktor-server-content-negotiation").versionRef("ktor")
             library("ktor-client-content-negotiation", "io.ktor", "ktor-client-content-negotiation").versionRef("ktor")
             library("ktor-serialization-kotlinx-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
+            library("ktor-client-cio", "io.ktor", "ktor-client-cio").versionRef("ktor")
             library("ktor-client-core", "io.ktor", "ktor-client-core").versionRef("ktor")
             library("ktor-client-logging", "io.ktor", "ktor-client-logging").versionRef("ktor")
 
             library("ktor-server-metrics-micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
             library("micrometer-registry-prometheus", "io.micrometer", "micrometer-registry-prometheus").versionRef("prometheus")
 
-            library("kafka-streams", "org.apache.kafka", "kafka-streams").versionRef("kafka-streams")
+            library("kotlin-kafka", "io.github.nomisrev", "kotlin-kafka").versionRef("kotlin-kafka")
 
             library("kotlinx-serialization-json", "org.jetbrains.kotlinx", "kotlinx-serialization-json").versionRef("kotlinx-serialization")
 
@@ -84,7 +85,6 @@ dependencyResolutionManagement {
             version("kotest", "5.9.1")
             version("testcontainers", "1.21.4")
             version("kotest-extensions", "2.0.2")
-            version("kafka-streams", "4.2.0")
             version("mockk", "1.14.9")
             version("turbine", "1.2.0")
 
@@ -98,8 +98,6 @@ dependencyResolutionManagement {
             library("kotest-extensions-testcontainers", "io.kotest.extensions", "kotest-extensions-testcontainers").versionRef("kotest-extensions")
 
             library("kotest-assertions-arrow", "io.kotest.extensions", "kotest-assertions-arrow").versionRef("arrow")
-
-            library("kafka-streams", "org.apache.kafka", "kafka-streams-test-utils").versionRef("kafka-streams")
 
             library("mockk", "io.mockk", "mockk").versionRef("mockk")
 

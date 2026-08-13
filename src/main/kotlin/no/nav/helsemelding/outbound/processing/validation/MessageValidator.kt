@@ -1,26 +1,33 @@
-package no.nav.helsemelding.outbound.processing.stream
+package no.nav.helsemelding.outbound.processing.validation
 
 import arrow.core.Either
-import arrow.core.getOrElse
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import arrow.core.Either.Left
+import arrow.core.Either.Right
+import no.nav.helsemelding.jsonschema.core.model.SchemaType
+import no.nav.helsemelding.jsonschema.core.validation.JsonSchemaValidator
+import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
+import no.nav.helsemelding.jsonschema.core.validation.ValidationError
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessingError
 import kotlin.uuid.Uuid
 
-data class OutboundMessageValidation(
+private const val SOURCE_SYSTEM_HEADER = "sourceSystem"
+
+data class MessageValidationResult(
     val recordKey: RecordKeyValidation,
     val recordValue: RecordValueValidation,
-    val recordMetadata: RecordMetadataValidation
+    val recordMetadata: RecordMetadataValidation,
+    val message: MessageValidation
 )
 
-fun OutboundMessageValidation.isValid(): Boolean =
+fun MessageValidationResult.isValid(): Boolean =
     recordKey.isValid &&
         recordValue.isValid &&
-        recordMetadata.isValid
+        recordMetadata.isValid &&
+        message.isValid
 
-fun OutboundMessageValidation.errors(): List<ProcessingError> =
+fun MessageValidationResult.errors(): List<ProcessingError> =
     buildList {
         when (val key = recordKey) {
             is RecordKeyValidation.Invalid ->
@@ -60,19 +67,46 @@ fun OutboundMessageValidation.errors(): List<ProcessingError> =
 
             RecordMetadataValidation.Valid -> Unit
         }
+
+        when (val message = message) {
+            is MessageValidation.Invalid ->
+                add(
+                    ProcessingError(
+                        category = ErrorCategory.VALIDATION,
+                        code = ErrorCode.INVALID_MESSAGE,
+                        message = message.reason
+                    )
+                )
+
+            MessageValidation.Valid -> Unit
+        }
     }
 
-class OutboundMessageValidator {
+class MessageValidator(
+    private val schemaValidator: SchemaValidator = JsonSchemaValidator()
+) {
     fun validate(
         key: String?,
         value: String?,
         sourceSystem: String?
-    ): OutboundMessageValidation =
-        OutboundMessageValidation(
+    ): MessageValidationResult {
+        val recordValue = validateRecordValue(value)
+
+        return MessageValidationResult(
             recordKey = validateRecordKey(key),
-            recordValue = validateRecordValue(value),
-            recordMetadata = validateRecordMetadata(sourceSystem)
+            recordValue = recordValue,
+            recordMetadata = validateRecordMetadata(sourceSystem),
+            message = validateMessage(value, recordValue)
         )
+    }
+
+    private fun validateMessage(
+        value: String?,
+        recordValue: RecordValueValidation
+    ): MessageValidation = when (recordValue) {
+        RecordValueValidation.Valid -> validateMessage(value.orEmpty(), schemaValidator)
+        is RecordValueValidation.Invalid -> MessageValidation.Valid
+    }
 }
 
 sealed interface Validation {
@@ -120,7 +154,6 @@ sealed interface RecordValueValidation : Validation {
     }
 }
 
-// NOTE: Should also validate the JSON schema
 internal fun validateRecordValue(
     value: String?
 ): RecordValueValidation =
@@ -135,19 +168,8 @@ internal fun validateRecordValue(
                 "Kafka record value is empty"
             )
 
-        !value.isValidJson() ->
-            RecordValueValidation.Invalid(
-                "Kafka record value is not valid JSON"
-            )
-
         else -> RecordValueValidation.Valid
     }
-
-private fun String.isValidJson(): Boolean =
-    Either.catch {
-        Json.parseToJsonElement(this) is JsonObject
-    }
-        .getOrElse { false }
 
 sealed interface RecordMetadataValidation : Validation {
     data object Valid : RecordMetadataValidation {
@@ -169,5 +191,44 @@ internal fun validateRecordMetadata(sourceSystem: String?): RecordMetadataValida
             )
 
         else -> RecordMetadataValidation.Valid
+    }
+}
+
+sealed interface MessageValidation : Validation {
+    data object Valid : MessageValidation {
+        override val isValid = true
+    }
+
+    data class Invalid(
+        val reason: String
+    ) : MessageValidation {
+        override val isValid = false
+    }
+}
+
+internal fun validateMessage(
+    value: String,
+    schemaValidator: SchemaValidator = JsonSchemaValidator()
+): MessageValidation {
+    return when (
+        val result = schemaValidator.validate(
+            schemaType = SchemaType.OUTGOING_DIALOG_MESSAGE,
+            json = value
+        )
+    ) {
+        is Left -> MessageValidation.Invalid(
+            "Kafka record value is not a valid outgoing dialog message: ${result.value.errors.joinToString()}"
+        )
+
+        is Right -> MessageValidation.Valid
+    }
+}
+
+class FakeSchemaValidator : SchemaValidator {
+    val payloads = mutableListOf<String>()
+
+    override fun validate(schemaType: SchemaType, json: String): Either<ValidationError, String> {
+        payloads.add(json)
+        return Right(json)
     }
 }
