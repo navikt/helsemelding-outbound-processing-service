@@ -15,7 +15,10 @@ data class Config(
     val kafka: Kafka,
     val pdl: Pdl,
     val providerRegistry: ProviderRegistry,
-    val server: Server
+    val server: Server,
+    val azureAuth: AzureAuth,
+    val httpClient: HttpClientConfig,
+    val httpTokenClient: HttpClientConfig
 )
 
 data class Kafka(
@@ -92,11 +95,14 @@ data class Kafka(
 fun Config.withKafka(update: Kafka.() -> Kafka) = copy(kafka = kafka.update())
 
 data class Pdl(
-    val graphqlUrl: String
+    val graphqlUrl: String,
+    val processingNumber: String,
+    val scope: String
 )
 
 data class ProviderRegistry(
-    val baseUrl: String
+    val baseUrl: String,
+    val scope: String
 )
 
 data class Server(
@@ -106,3 +112,23 @@ data class Server(
     @JvmInline
     value class Port(val value: Int)
 }
+
+data class AzureAuth(
+    val azureTokenEndpoint: AzureTokenEndpoint,
+    val azureAppClientId: AzureAppClientId,
+    val azureAppClientSecret: Masked,
+    val azureGrantType: AzureGrantType
+) {
+    @JvmInline
+    value class AzureTokenEndpoint(val value: String)
+
+    @JvmInline
+    value class AzureAppClientId(val value: String)
+
+    @JvmInline
+    value class AzureGrantType(val value: String)
+}
+
+data class HttpClientConfig(
+    val connectionTimeout: Duration
+)

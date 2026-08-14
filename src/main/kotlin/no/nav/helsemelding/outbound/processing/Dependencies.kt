@@ -8,12 +8,10 @@ import io.github.nomisRev.kafka.receiver.AutoOffsetReset
 import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
 import io.micrometer.prometheus.PrometheusConfig.DEFAULT
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import kotlinx.serialization.json.Json
+import no.nav.helsemelding.outbound.processing.client.auth.httpTokenClient
+import no.nav.helsemelding.outbound.processing.client.auth.scopedAuthHttpClient
 import no.nav.helsemelding.outbound.processing.client.pdl.HttpPdlClient
 import no.nav.helsemelding.outbound.processing.client.pdl.PdlClient
 import no.nav.helsemelding.outbound.processing.client.providerregistry.HttpProviderRegistryClient
@@ -42,20 +40,22 @@ internal suspend fun ResourceScope.kafkaPublisher(kafka: Kafka): KafkaPublisher<
         p.close().also { log.info { "Closed kafka publisher" } }
     }
 
-internal suspend fun ResourceScope.httpClient(): HttpClient =
+internal suspend fun ResourceScope.tokenHttpClient(): HttpClient =
+    install({ httpTokenClient(config().httpTokenClient) }) { c, _: ExitCase ->
+        c.close().also { log.info { "Closed http token client" } }
+    }
+
+internal suspend fun ResourceScope.scopedApiHttpClient(tokenClient: HttpClient, scope: String): HttpClient =
     install(
         {
-            HttpClient(CIO) {
-                install(ContentNegotiation) {
-                    json(
-                        Json {
-                            ignoreUnknownKeys = true
-                        }
-                    )
-                }
-            }
+            scopedAuthHttpClient(
+                tokenClient = tokenClient,
+                azureAuth = config().azureAuth,
+                httpClientConfig = config().httpClient,
+                scope = scope
+            )
         }
-    ) { c, _: ExitCase -> c.close().also { log.info { "Closed http client" } } }
+    ) { c, _: ExitCase -> c.close().also { log.info { "Closed scoped auth http client" } } }
 
 internal fun kafkaReceiver(kafka: Kafka, autoOffsetReset: AutoOffsetReset): KafkaReceiver<String, ByteArray> =
     KafkaReceiver(kafka.toReceiverSettings(autoOffsetReset))
@@ -63,10 +63,14 @@ internal fun kafkaReceiver(kafka: Kafka, autoOffsetReset: AutoOffsetReset): Kafk
 internal fun pdlClient(pdl: Pdl, httpClient: HttpClient): PdlClient =
     HttpPdlClient(
         clientProvider = { httpClient },
-        pdlGraphqlUrl = pdl.graphqlUrl
+        pdlGraphqlUrl = pdl.graphqlUrl,
+        processingNumber = pdl.processingNumber
     )
 
-internal fun providerRegistryClient(providerRegistry: ProviderRegistry, httpClient: HttpClient): ProviderRegistryClient =
+internal fun providerRegistryClient(
+    providerRegistry: ProviderRegistry,
+    httpClient: HttpClient
+): ProviderRegistryClient =
     HttpProviderRegistryClient(
         clientProvider = { httpClient },
         providerRegistryBaseUrl = providerRegistry.baseUrl
@@ -78,10 +82,13 @@ suspend fun ResourceScope.dependencies(): Dependencies = awaitAll {
     val metricsRegistry = async { metricsRegistry() }
     val kafkaReceiver = kafkaReceiver(config.kafka, AutoOffsetReset.Latest)
     val kafkaPublisher = async { kafkaPublisher(config.kafka) }
-    val httpClient = async { httpClient() }
-    val client = httpClient.await()
-    val pdlClient = async { pdlClient(config.pdl, client) }
-    val providerRegistryClient = async { providerRegistryClient(config.providerRegistry, client) }
+    val tokenClient = async { tokenHttpClient() }
+    val pdlHttpClient = async { scopedApiHttpClient(tokenClient.await(), config.pdl.scope) }
+    val providerRegistryHttpClient = async { scopedApiHttpClient(tokenClient.await(), config.providerRegistry.scope) }
+    val pdlClient = async { pdlClient(config.pdl, pdlHttpClient.await()) }
+    val providerRegistryClient = async {
+        providerRegistryClient(config.providerRegistry, providerRegistryHttpClient.await())
+    }
 
     Dependencies(
         meterRegistry = metricsRegistry.await(),
