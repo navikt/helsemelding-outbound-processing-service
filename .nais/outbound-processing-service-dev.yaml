@@ -60,14 +60,3 @@ spec:
     paths:
       - kvPath: /serviceuser/data/dev/srvtokt
         mountPath: /secret/serviceuser
-  env:
-    - name: PDL_GRAPHQL_URL
-      value: "https://pdl-api.dev-fss-pub.nais.io/graphql"
-    - name: PDL_PROCESSING_NUMBER
-      value: "B1047"
-    - name: PDL_SCOPE
-      value: "api://dev-fss.pdl.pdl-api/.default"
-    - name: PROVIDER_REGISTRY_BASE_URL
-      value: "http://isdialogmelding.teamsykefravr"
-    - name: PROVIDER_REGISTRY_SCOPE
-      value: "api://dev-gcp.teamsykefravr.isdialogmelding/.default"
