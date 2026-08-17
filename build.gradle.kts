@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.bundles.prometheus)
     implementation(libs.hoplite.core)
     implementation(libs.hoplite.hocon)
+    implementation(libs.ktor.client.auth)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.client.core)

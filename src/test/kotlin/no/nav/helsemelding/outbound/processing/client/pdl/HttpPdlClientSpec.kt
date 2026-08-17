@@ -35,8 +35,8 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonRequest
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonResponse
 import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedClientError
 
-private const val PROCESSING_NUMBER_HEADER_KEY = "behandlingsnummer"
-private const val PROCESSING_NUMBER_HEADER_VALUE = ""
+private const val PROCESSING_NUMBER_HEADER_KEY = "Behandlingsnummer"
+private const val PROCESSING_NUMBER_HEADER_VALUE = "B123"
 
 class HttpPdlClientSpec : StringSpec({
 
@@ -200,6 +200,7 @@ private fun testClient(
     handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
 ): PdlClient = HttpPdlClient(
     pdlGraphqlUrl = "http://localhost",
+    processingNumber = PROCESSING_NUMBER_HEADER_VALUE,
     clientProvider = {
         HttpClient(MockEngine) {
             engine { addHandler(handler) }

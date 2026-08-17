@@ -28,8 +28,7 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.errorMessage
 
 private val log = KotlinLogging.logger {}
 
-private const val PROCESSING_NUMBER_HEADER_KEY = "behandlingsnummer"
-private const val PROCESSING_NUMBER_HEADER_VALUE = ""
+private const val PROCESSING_NUMBER_HEADER_KEY = "Behandlingsnummer"
 
 private val PDL_PERSON_QUERY = """
     query(${'$'}ident: ID!, ${'$'}navnHistorikk: Boolean!){
@@ -55,7 +54,8 @@ fun interface PdlClient {
 
 class HttpPdlClient(
     clientProvider: () -> HttpClient,
-    private val pdlGraphqlUrl: String
+    private val pdlGraphqlUrl: String,
+    private val processingNumber: String
 ) : PdlClient {
     private val httpClient = clientProvider()
 
@@ -83,7 +83,7 @@ class HttpPdlClient(
         Either.catch {
             httpClient.post(pdlGraphqlUrl) {
                 contentType(Json)
-                header(PROCESSING_NUMBER_HEADER_KEY, PROCESSING_NUMBER_HEADER_VALUE)
+                header(PROCESSING_NUMBER_HEADER_KEY, processingNumber)
                 setBody(
                     PersonRequest(
                         query = PDL_PERSON_QUERY,
