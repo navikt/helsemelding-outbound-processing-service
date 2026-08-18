@@ -38,7 +38,9 @@ internal fun scopedAuthHttpClient(
         install(HttpTimeout) {
             connectTimeoutMillis = httpClientConfig.connectionTimeout.inWholeMilliseconds
         }
-        install(ContentNegotiation) { json() }
+        install(ContentNegotiation) {
+            json()
+        }
         install(Auth) {
             bearer {
                 refreshTokens {
