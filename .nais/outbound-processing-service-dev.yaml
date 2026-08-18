@@ -60,3 +60,11 @@ spec:
     paths:
       - kvPath: /serviceuser/data/dev/srvtokt
         mountPath: /secret/serviceuser
+  accessPolicy:
+    outbound:
+      external:
+        - host: pdl-api.dev-fss-pub.nais.io
+      rules:
+        - application: isdialogmelding
+          namespace: teamsykefravr
+          cluster: dev-gcp
