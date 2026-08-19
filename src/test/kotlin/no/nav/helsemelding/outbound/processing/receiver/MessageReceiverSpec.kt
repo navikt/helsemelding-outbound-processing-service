@@ -34,7 +34,7 @@ class MessageReceiverSpec : KafkaSpec(
             resourceScope {
                 turbineScope {
                     val publisher = install({ KafkaPublisher(publisherSettings()) }) { p, _ -> p.close() }
-                    val referenceId = Uuid.random()
+                    val key = Uuid.random()
                     val content = "data"
                     val sourceSystem = "source-system"
                     val topic = testTopic()
@@ -42,7 +42,7 @@ class MessageReceiverSpec : KafkaSpec(
                         publish(
                             ProducerRecord(
                                 topic,
-                                referenceId.toString(),
+                                key.toString(),
                                 content.encodeToByteArray()
                             )
                                 .withSourceSystem(sourceSystem)
@@ -57,7 +57,7 @@ class MessageReceiverSpec : KafkaSpec(
 
                     messages.test {
                         val message = awaitItem()
-                        message.key shouldBe referenceId.toString()
+                        message.key shouldBe key.toString()
                         message.payload shouldBe content
                         message.sourceSystem shouldBe sourceSystem
                         message.topic shouldBe topic
@@ -72,14 +72,14 @@ class MessageReceiverSpec : KafkaSpec(
             resourceScope {
                 turbineScope {
                     val publisher = install({ KafkaPublisher(publisherSettings()) }) { p, _ -> p.close() }
-                    val referenceId = Uuid.random()
+                    val key = Uuid.random()
                     val content = "data"
                     val topic = testTopic()
                     publisher.publishScope {
                         publish(
                             ProducerRecord(
                                 topic,
-                                referenceId.toString(),
+                                key.toString(),
                                 content.encodeToByteArray()
                             )
                         )
@@ -92,7 +92,7 @@ class MessageReceiverSpec : KafkaSpec(
 
                     receiver.receiveMessages().test {
                         val message = awaitItem()
-                        message.key shouldBe referenceId.toString()
+                        message.key shouldBe key.toString()
                         message.payload shouldBe content
                         message.sourceSystem shouldBe null
                         message.topic shouldBe topic

@@ -1,7 +1,9 @@
 package no.nav.helsemelding.outbound.processing.publisher
 
 import arrow.core.Either
+import arrow.core.Either.Right
 import io.github.nomisRev.kafka.publisher.KafkaPublisher
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.config.Kafka
@@ -11,6 +13,8 @@ import no.nav.helsemelding.outbound.processing.util.toEither
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
+
+private val log = KotlinLogging.logger {}
 
 interface MessagePublisher {
     suspend fun publish(errorMessage: ErrorMessage): Either<PublishError, RecordMetadata>
@@ -26,32 +30,45 @@ class OutboundMessagePublisher(
     override suspend fun publish(errorMessage: ErrorMessage): Either<PublishError, RecordMetadata> =
         publish(
             topic = topics.errorMessage,
-            referenceId = errorMessage.originalMessage.key,
+            key = errorMessage.originalMessage.key,
             payload = json.encodeToString(errorMessage)
         )
 
     override suspend fun publish(processedMessage: ProcessedMessage): Either<PublishError, RecordMetadata> =
         publish(
             topic = topics.dialogMessageOutXml,
-            referenceId = processedMessage.key,
+            key = processedMessage.key,
             payload = processedMessage.payload
         )
 
     private suspend fun publish(
         topic: String,
-        referenceId: String,
+        key: String,
         payload: String
     ): Either<PublishError, RecordMetadata> =
         kafkaPublisher.publishScope {
             publishCatching(
                 ProducerRecord(
                     topic,
-                    referenceId,
+                    key,
                     payload.encodeToByteArray()
                 )
             )
         }
-            .toEither { error -> PublishError.Failure(referenceId, topic, error) }
+            .toEither { error -> PublishError.Failure(key, topic, error) }
+            .also { result ->
+                when (result) {
+                    is Right -> result.value.logPublished(topic, key)
+
+                    else -> {}
+                }
+            }
+}
+
+private fun RecordMetadata.logPublished(topic: String, key: String) {
+    log.info {
+        "Published message key=$key topic=$topic partition=${partition()} offset=${offset()}"
+    }
 }
 
 class FakeMessagePublisher(

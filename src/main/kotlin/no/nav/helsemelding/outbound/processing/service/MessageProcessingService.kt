@@ -126,7 +126,7 @@ private fun ConversionError.toProcessingError(): ProcessingError =
 private fun Either<PublishError, RecordMetadata>.logPublishError() {
     when (this) {
         is Left -> log.error(value.cause) {
-            "Failed to publish message referenceId=${value.referenceId} topic=${value.topic}"
+            "Failed to publish message key=${value.key} topic=${value.topic}"
         }
 
         is Right -> Unit

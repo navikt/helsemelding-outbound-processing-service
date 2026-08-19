@@ -3,9 +3,11 @@ package no.nav.helsemelding.outbound.processing.client.pdl
 import arrow.core.getOrElse
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -23,6 +25,7 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
+import no.nav.helsemelding.outbound.processing.client.auth.AccessTokenProvider
 import no.nav.helsemelding.outbound.processing.client.pdl.model.ErrorExtension
 import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
 import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlResponseError
@@ -37,170 +40,175 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedClient
 
 private const val PROCESSING_NUMBER_HEADER_KEY = "Behandlingsnummer"
 private const val PROCESSING_NUMBER_HEADER_VALUE = "B123"
+private const val ACCESS_TOKEN = "access-token"
+private const val PDL_SCOPE = "pdl-scope"
 
-class HttpPdlClientSpec : StringSpec({
+class HttpPdlClientSpec : StringSpec(
+    {
+        val personident = personident("12345678901")
 
-    val personident = personident("12345678901")
-
-    "status OK and valid data should return requested name of person" {
-        val name = PersonName(
-            firstName = "Ola",
-            middleName = "Jens",
-            lastName = "Nordmann"
-        )
-        val personResponse = PersonResponse(
-            errors = emptyList(),
-            data = PersonData(
-                person = Person(
-                    names = listOf(name)
+        "status OK and valid data should return requested name of person" {
+            val name = PersonName(
+                firstName = "Ola",
+                middleName = "Jens",
+                lastName = "Nordmann"
+            )
+            val personResponse = PersonResponse(
+                errors = emptyList(),
+                data = PersonData(
+                    person = Person(
+                        names = listOf(name)
+                    )
                 )
             )
-        )
-        val client = testClient { request ->
-            request.shouldBePdlPersonRequest(personident)
+            val client = testClient { request ->
+                request.shouldBePdlPersonRequest(personident)
 
-            respond(
-                content = Json.encodeToString(personResponse),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+                respond(
+                    content = Json.encodeToString(personResponse),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+
+            val response = client.getPersonName(personident)
+
+            val personName = response.shouldBeRight()
+            personName shouldBe name
         }
 
-        val response = client.getPersonName(personident)
-
-        val personName = response.shouldBeRight()
-        personName shouldBe name
-    }
-
-    "status OK and errors not empty should return GraphQlError" {
-        val personResponse = PersonResponse(
-            errors = listOf(generateGraphQlResponseError("not_found")),
-            data = null
-        )
-        val client = testClient { request ->
-            request.shouldBePdlPersonRequest(personident)
-
-            respond(
-                content = Json.encodeToString(personResponse),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+        "status OK and errors not empty should return GraphQlError" {
+            val personResponse = PersonResponse(
+                errors = listOf(generateGraphQlResponseError("not_found")),
+                data = null
             )
+            val client = testClient { request ->
+                request.shouldBePdlPersonRequest(personident)
+
+                respond(
+                    content = Json.encodeToString(personResponse),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+
+            val response = client.getPersonName(personident)
+
+            val error = response.shouldBeLeft()
+            val personNotFoundError = error.shouldBeInstanceOf<GraphQlError>()
+            personNotFoundError.message shouldBe "Error while requesting person from PDL"
+            personNotFoundError.errors.size shouldBe 1
         }
 
-        val response = client.getPersonName(personident)
-
-        val error = response.shouldBeLeft()
-        val personNotFoundError = error.shouldBeInstanceOf<GraphQlError>()
-        personNotFoundError.message shouldBe "Error while requesting person from PersonDataLosningen"
-        personNotFoundError.errors.size shouldBe 1
-    }
-
-    withData(
-        nameFn = { "status OK and ${it.first} should return PersonNotFound" },
-        "data is null" to PersonResponse(
-            errors = emptyList(),
-            data = null
-        ),
-        "data.hentPerson is null" to PersonResponse(
-            errors = emptyList(),
-            data = PersonData(
-                person = null
-            )
-        )
-    ) {
-        val personResponse = it.second
-        val client = testClient { request ->
-            request.shouldBePdlPersonRequest(personident)
-
-            respond(
-                content = Json.encodeToString(personResponse),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
-        }
-
-        val response = client.getPersonName(personident)
-
-        val error = response.shouldBeLeft()
-        val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
-        personNotFoundError.message shouldBe "Person not found: data or hentPerson is null"
-    }
-
-    "status OK and empty navn list should return PersonNotFound" {
-        val personResponse = PersonResponse(
-            errors = emptyList(),
-            data = PersonData(
-                person = Person(
-                    names = emptyList()
+        withData(
+            nameFn = { "status OK and ${it.first} should return PersonNotFound" },
+            "data is null" to PersonResponse(
+                errors = emptyList(),
+                data = null
+            ),
+            "data.hentPerson is null" to PersonResponse(
+                errors = emptyList(),
+                data = PersonData(
+                    person = null
                 )
             )
-        )
-        val client = testClient { request ->
-            request.shouldBePdlPersonRequest(personident)
+        ) {
+            val personResponse = it.second
+            val client = testClient { request ->
+                request.shouldBePdlPersonRequest(personident)
 
-            respond(
-                content = Json.encodeToString(personResponse),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                respond(
+                    content = Json.encodeToString(personResponse),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+
+            val response = client.getPersonName(personident)
+
+            val error = response.shouldBeLeft()
+            val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
+            personNotFoundError.message shouldBe "Person not found"
+        }
+
+        "status OK and empty navn list should return PersonNotFound" {
+            val personResponse = PersonResponse(
+                errors = emptyList(),
+                data = PersonData(
+                    person = Person(
+                        names = emptyList()
+                    )
+                )
             )
+            val client = testClient { request ->
+                request.shouldBePdlPersonRequest(personident)
+
+                respond(
+                    content = Json.encodeToString(personResponse),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+
+            val response = client.getPersonName(personident)
+
+            val error = response.shouldBeLeft()
+            val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
+            personNotFoundError.message shouldBe "Person not found"
         }
 
-        val response = client.getPersonName(personident)
+        "status not OK should return HttpError" {
+            val client = testClient {
+                respond(
+                    content = "Service Unavailable",
+                    status = HttpStatusCode.ServiceUnavailable
+                )
+            }
 
-        val error = response.shouldBeLeft()
-        val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
-        personNotFoundError.message shouldBe "Person not found: navn empty"
-    }
+            val response = client.getPersonName(personident)
 
-    "status not OK should return HttpError" {
-        val client = testClient {
-            respond(
-                content = "Service Unavailable",
-                status = HttpStatusCode.ServiceUnavailable
-            )
+            val error = response.shouldBeLeft()
+            val fetchingError = error.shouldBeInstanceOf<HttpError>()
+            fetchingError.statusCode shouldBe HttpStatusCode.ServiceUnavailable.value
+            fetchingError.message shouldBe "Service Unavailable"
         }
 
-        val response = client.getPersonName(personident)
+        "request failure should return UnexpectedClientError" {
+            val client = testClient {
+                throw RuntimeException("PDL unavailable")
+            }
 
-        val error = response.shouldBeLeft()
-        val fetchingError = error.shouldBeInstanceOf<HttpError>()
-        fetchingError.statusCode shouldBe HttpStatusCode.ServiceUnavailable.value
-        fetchingError.message shouldBe "Service Unavailable"
-    }
+            val response = client.getPersonName(personident)
 
-    "request failure should return UnexpectedClientError" {
-        val client = testClient {
-            throw RuntimeException("PDL unavailable")
+            val error = response.shouldBeLeft()
+            val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+            unexpectedError.message shouldBe "Failed to request person from PDL: PDL unavailable"
         }
 
-        val response = client.getPersonName(personident)
+        "status OK and invalid response body should return UnexpectedClientError" {
+            val client = testClient {
+                respond(
+                    content = "not json",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
 
-        val error = response.shouldBeLeft()
-        val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
-        unexpectedError.message shouldBe "Failed to request person from PersonDataLosningen: PDL unavailable"
-    }
-
-    "status OK and invalid response body should return UnexpectedClientError" {
-        val client = testClient {
-            respond(
-                content = "not json",
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+            shouldThrowAny {
+                client.getPersonName(personident)
+            }
         }
-
-        val response = client.getPersonName(personident)
-
-        val error = response.shouldBeLeft()
-        error.shouldBeInstanceOf<UnexpectedClientError>()
     }
-})
+)
 
 private fun testClient(
+    tokenProvider: AccessTokenProvider = FakeAccessTokenProvider(),
     handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
 ): PdlClient = HttpPdlClient(
     pdlGraphqlUrl = "http://localhost",
     processingNumber = PROCESSING_NUMBER_HEADER_VALUE,
+    tokenProvider = tokenProvider,
+    scope = PDL_SCOPE,
     clientProvider = {
         HttpClient(MockEngine) {
             engine { addHandler(handler) }
@@ -217,11 +225,18 @@ private fun testClient(
     }
 )
 
-private fun HttpRequestData.shouldBePdlPersonRequest(personident: Personident) {
+private fun HttpRequestData.shouldBePdlPersonRequest(
+    personident: Personident,
+    accessToken: String = ACCESS_TOKEN
+) {
     method shouldBe HttpMethod.Post
+    headers[HttpHeaders.Authorization] shouldBe "Bearer $accessToken"
     headers[PROCESSING_NUMBER_HEADER_KEY] shouldBe PROCESSING_NUMBER_HEADER_VALUE
 
-    val pdlRequest = Json.decodeFromString<PersonRequest>(bodyAsText())
+    val body = bodyAsText()
+    body shouldContain """"navnHistorikk":false"""
+
+    val pdlRequest = Json.decodeFromString<PersonRequest>(body)
     pdlRequest.variables.nationalIdentityNumber shouldBe personident.value
     pdlRequest.variables.includeNameHistory shouldBe false
 }
@@ -245,3 +260,10 @@ fun generateGraphQlResponseError(code: String? = null) =
 
 private fun personident(value: String): Personident =
     Personident(value).getOrElse { error(it.message) }
+
+private class FakeAccessTokenProvider : AccessTokenProvider {
+    override suspend fun token(scope: String): String {
+        scope shouldBe PDL_SCOPE
+        return ACCESS_TOKEN
+    }
+}

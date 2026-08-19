@@ -18,57 +18,58 @@ import no.nav.helsemelding.messageconverter.msghead.model.Employee
 import no.nav.helsemelding.outbound.processing.client.providerregistry.createProvider
 import kotlin.uuid.Uuid
 
-class OutgoingMessageConverterSpec : StringSpec({
-
-    "should resolve additional info before converting with synchronous provider" {
-        val dialogMessage = outgoingDialogMessage()
-        val json = OutgoingDialogMessageSerializer().serialize(dialogMessage).shouldBeRight()
-        val additionalMessageInfo = additionalMessageInfo()
-        val resolver = FakeAdditionalMessageInfoResolver().apply {
-            givenAdditionalMessageInfo(dialogMessage.id, Either.Right(additionalMessageInfo))
-        }
-        val messageConverter = mockk<MessageConverter>()
-        lateinit var provider: AdditionalMessageInfoProvider
-        every { messageConverter.outgoingDialogMessageJsonToXml(json) } answers {
-            provider.getAdditionalMessageInfo(dialogMessage).shouldBeRight() shouldBe additionalMessageInfo
-            Either.Right("<xml />")
-        }
-
-        val converter = MsgHeadOutgoingMessageConverter(
-            additionalMessageInfoResolver = resolver,
-            converterFactory = {
-                provider = it
-                messageConverter
+class OutgoingMessageConverterSpec : StringSpec(
+    {
+        "should resolve additional info before converting with synchronous provider" {
+            val dialogMessage = outgoingDialogMessage()
+            val json = OutgoingDialogMessageSerializer().serialize(dialogMessage).shouldBeRight()
+            val additionalMessageInfo = additionalMessageInfo()
+            val resolver = FakeAdditionalMessageInfoResolver().apply {
+                givenAdditionalMessageInfo(dialogMessage.id, Either.Right(additionalMessageInfo))
             }
-        )
+            val messageConverter = mockk<MessageConverter>()
+            lateinit var provider: AdditionalMessageInfoProvider
+            every { messageConverter.outgoingDialogMessageJsonToXml(json) } answers {
+                provider.getAdditionalMessageInfo(dialogMessage).shouldBeRight() shouldBe additionalMessageInfo
+                Either.Right("<xml />")
+            }
 
-        converter.outgoingDialogMessageJsonToXml(json).shouldBeRight() shouldBe "<xml />"
+            val converter = MsgHeadOutgoingMessageConverter(
+                additionalMessageInfoResolver = resolver,
+                converterFactory = {
+                    provider = it
+                    messageConverter
+                }
+            )
 
-        verify(exactly = 1) {
-            messageConverter.outgoingDialogMessageJsonToXml(json)
+            converter.outgoingDialogMessageJsonToXml(json).shouldBeRight() shouldBe "<xml />"
+
+            verify(exactly = 1) {
+                messageConverter.outgoingDialogMessageJsonToXml(json)
+            }
+        }
+
+        "should return resolver error without converting" {
+            val dialogMessage = outgoingDialogMessage()
+            val json = OutgoingDialogMessageSerializer().serialize(dialogMessage).shouldBeRight()
+            val resolver = FakeAdditionalMessageInfoResolver()
+            val messageConverter = mockk<MessageConverter>()
+
+            val converter = MsgHeadOutgoingMessageConverter(
+                additionalMessageInfoResolver = resolver,
+                converterFactory = { messageConverter }
+            )
+
+            val error = converter.outgoingDialogMessageJsonToXml(json).shouldBeLeft()
+
+            error.shouldBeInstanceOf<AdditionalMessageInfoError>()
+            error.message shouldBe "Missing additional message info for message ${dialogMessage.id}"
+            verify(exactly = 0) {
+                messageConverter.outgoingDialogMessageJsonToXml(any())
+            }
         }
     }
-
-    "should return resolver error without converting" {
-        val dialogMessage = outgoingDialogMessage()
-        val json = OutgoingDialogMessageSerializer().serialize(dialogMessage).shouldBeRight()
-        val resolver = FakeAdditionalMessageInfoResolver()
-        val messageConverter = mockk<MessageConverter>()
-
-        val converter = MsgHeadOutgoingMessageConverter(
-            additionalMessageInfoResolver = resolver,
-            converterFactory = { messageConverter }
-        )
-
-        val error = converter.outgoingDialogMessageJsonToXml(json).shouldBeLeft()
-
-        error.shouldBeInstanceOf<AdditionalMessageInfoError>()
-        error.message shouldBe "Missing additional message info for message ${dialogMessage.id}"
-        verify(exactly = 0) {
-            messageConverter.outgoingDialogMessageJsonToXml(any())
-        }
-    }
-})
+)
 
 private fun additionalMessageInfo(): AdditionalMessageInfo {
     val personident = personident("24274116206")

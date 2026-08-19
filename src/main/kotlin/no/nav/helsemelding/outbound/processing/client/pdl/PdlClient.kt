@@ -2,6 +2,7 @@ package no.nav.helsemelding.outbound.processing.client.pdl
 
 import arrow.core.Either
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -12,9 +13,11 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
 import io.ktor.http.ContentType.Application.Json
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
+import no.nav.helsemelding.outbound.processing.client.auth.AccessTokenProvider
 import no.nav.helsemelding.outbound.processing.client.pdl.model.ClientError
 import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
 import no.nav.helsemelding.outbound.processing.client.pdl.model.HttpError
@@ -37,12 +40,6 @@ private val PDL_PERSON_QUERY = """
           fornavn
           mellomnavn
           etternavn
-          forkortetNavn
-          originaltNavn {
-            fornavn
-            mellomnavn
-            etternavn
-          }
         }
       }
     }
@@ -54,61 +51,75 @@ fun interface PdlClient {
 
 class HttpPdlClient(
     clientProvider: () -> HttpClient,
+    private val scope: String,
     private val pdlGraphqlUrl: String,
-    private val processingNumber: String
+    private val processingNumber: String,
+    private val tokenProvider: AccessTokenProvider
 ) : PdlClient {
     private val httpClient = clientProvider()
 
     override suspend fun getPersonName(personident: Personident): Either<ClientError, PersonName> =
         either {
-            val response = fetchPerson(personident)
-                .mapLeft { it.toUnexpectedError("Failed to request person from PersonDataLosningen") }
+            val personResponse = fetchPersonResponse(
+                personident = personident,
+                accessToken = tokenProvider.token(scope)
+            )
                 .bind()
+
+            personResponse.toPersonName().bind()
+        }
+
+    private suspend fun fetchPersonResponse(
+        personident: Personident,
+        accessToken: String
+    ): Either<ClientError, PersonResponse> =
+        either {
+            val response = fetchPerson(personident, accessToken).bind()
 
             log.debug { "Response from ${response.request.method} ${response.request.url} is ${response.status}" }
 
-            if (response.status != HttpStatusCode.OK) {
+            ensure(response.status == HttpStatusCode.OK) {
                 log.error { "Request with url: $pdlGraphqlUrl failed with response code: ${response.status.value}" }
-                raise(response.toFetchingError().bind())
+                response.toFetchingError().bind()
             }
 
-            response.toPersonResponse()
-                .mapLeft { it.toUnexpectedError("Failed to decode response from PersonDataLosningen") }
-                .bind()
-                .toPersonName()
-                .bind()
+            response.body<PersonResponse>()
         }
 
-    private suspend fun fetchPerson(personident: Personident): Either<Throwable, HttpResponse> =
+    private suspend fun fetchPerson(
+        personident: Personident,
+        accessToken: String
+    ): Either<ClientError, HttpResponse> =
         Either.catch {
             httpClient.post(pdlGraphqlUrl) {
                 contentType(Json)
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
                 header(PROCESSING_NUMBER_HEADER_KEY, processingNumber)
                 setBody(
                     PersonRequest(
                         query = PDL_PERSON_QUERY,
                         variables = PersonVariables(
-                            nationalIdentityNumber = personident.value
+                            nationalIdentityNumber = personident.value,
+                            includeNameHistory = false
                         )
                     )
                 )
             }
         }
+            .mapLeft { it.toUnexpectedError("Failed to request person from PDL") }
 }
 
 private fun PersonResponse.toPersonName(): Either<ClientError, PersonName> =
     either {
-        errors
-            .takeIf { it.isNotEmpty() }
-            ?.let { pdlErrors ->
-                val errorMessage = "Error while requesting person from PersonDataLosningen"
-                pdlErrors.forEach { log.error { "$errorMessage: ${it.errorMessage()}" } }
-                raise(GraphQlError(errorMessage, pdlErrors))
-            }
+        ensure(errors.isEmpty()) {
+            val errorMessage = "Error while requesting person from PDL"
+            errors.forEach { log.error { "$errorMessage: ${it.errorMessage()}" } }
+            GraphQlError(errorMessage, errors)
+        }
 
-        val person = data?.person ?: raise(PersonNotFound("Person not found: data or hentPerson is null"))
-
-        person.names.firstOrNull() ?: raise(PersonNotFound("Person not found: navn empty"))
+        val name = data?.person?.names?.firstOrNull()
+        ensure(name != null) { PersonNotFound("Person not found") }
+        name
     }
 
 private suspend fun HttpResponse.toFetchingError(): Either<ClientError, HttpError> =
@@ -116,13 +127,10 @@ private suspend fun HttpResponse.toFetchingError(): Either<ClientError, HttpErro
         HttpError(
             statusCode = status.value,
             message = Either.catch { bodyAsText() }
-                .mapLeft { it.toUnexpectedError("Failed to read error response from PersonDataLosningen") }
+                .mapLeft { it.toUnexpectedError("Failed to read error response from PDL") }
                 .bind()
         )
     }
-
-private suspend fun HttpResponse.toPersonResponse(): Either<Throwable, PersonResponse> =
-    Either.catch { body<PersonResponse>() }
 
 private fun Throwable.toUnexpectedError(message: String): UnexpectedClientError =
     UnexpectedClientError(
