@@ -2,6 +2,7 @@ package no.nav.helsemelding.outbound.processing.client.providerregistry
 
 import arrow.core.Either
 import arrow.core.raise.either
+import arrow.core.raise.ensure
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -14,8 +15,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ClientError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ExternalProvider
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.HttpError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedClientError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.toProvider
 import kotlin.uuid.Uuid
 
 private val log = KotlinLogging.logger {}
@@ -34,31 +37,28 @@ class HttpProviderRegistryClient(
 
     override suspend fun getProvider(providerId: Uuid): Either<ClientError, Provider> =
         either {
-            val response = fetchProvider(providerId)
-                .mapLeft { it.toUnexpectedError("Failed to request provider from ProviderRegistry") }
-                .bind()
+            val response = fetchProvider(providerId).bind()
 
             log.debug { "Response from ${response.request.method} ${response.request.url} is ${response.status}" }
 
-            if (response.status != HttpStatusCode.OK) {
+            ensure(response.status == HttpStatusCode.OK) {
                 log.error {
                     "Request with url: $providerRegistryBaseUrl$PROVIDER_PATH/$providerId " +
                         "failed with response code: ${response.status.value}"
                 }
-                raise(response.toHttpError().bind())
+                response.toHttpError().bind()
             }
 
-            response.toProvider()
-                .mapLeft { it.toUnexpectedError("Failed to decode response from ProviderRegistry") }
-                .bind()
+            response.body<ExternalProvider>().toProvider()
         }
 
-    private suspend fun fetchProvider(providerId: Uuid): Either<Throwable, HttpResponse> =
+    private suspend fun fetchProvider(providerId: Uuid): Either<ClientError, HttpResponse> =
         Either.catch {
             httpClient.get("$providerRegistryBaseUrl$PROVIDER_PATH/$providerId") {
                 contentType(Json)
             }
         }
+            .mapLeft { it.toUnexpectedError("Failed to request provider from ProviderRegistry") }
 }
 
 private suspend fun HttpResponse.toHttpError(): Either<ClientError, HttpError> =
@@ -70,9 +70,6 @@ private suspend fun HttpResponse.toHttpError(): Either<ClientError, HttpError> =
                 .bind()
         )
     }
-
-private suspend fun HttpResponse.toProvider(): Either<Throwable, Provider> =
-    Either.catch { body<Provider>() }
 
 private fun Throwable.toUnexpectedError(message: String): UnexpectedClientError =
     UnexpectedClientError(
