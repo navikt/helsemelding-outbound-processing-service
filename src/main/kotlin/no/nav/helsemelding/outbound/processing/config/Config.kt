@@ -17,8 +17,7 @@ data class Config(
     val providerRegistry: ProviderRegistry,
     val server: Server,
     val azureAuth: AzureAuth,
-    val httpClient: HttpClientConfig,
-    val httpTokenClient: HttpClientConfig
+    val httpClient: HttpClientConfig
 )
 
 data class Kafka(
@@ -130,5 +129,9 @@ data class AzureAuth(
 }
 
 data class HttpClientConfig(
-    val connectionTimeout: Duration
+    val maxConnectionsCount: Int,
+    val connectionTimeout: Duration,
+    val requestTimeout: Duration,
+    val socketTimeout: Duration,
+    val keepAliveTime: Duration
 )

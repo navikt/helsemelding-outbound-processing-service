@@ -31,91 +31,93 @@ import no.nav.helsemelding.outbound.processing.client.providerregistry.model.Une
 import java.time.OffsetDateTime
 import kotlin.uuid.Uuid
 
-class HttpProviderRegistryClientSpec : StringSpec({
+class HttpProviderRegistryClientSpec : StringSpec(
+    {
+        "status OK should return requested provider" {
+            val providerId = Uuid.random()
 
-    "status OK should return requested provider" {
-        val providerId = Uuid.random()
+            val client = testClient { request ->
+                request.method shouldBe HttpMethod.Get
+                request.url.fullPath shouldBe "/api/v1/behandler/$providerId"
 
-        val client = testClient { request ->
-            request.method shouldBe HttpMethod.Get
-            request.url.fullPath shouldBe "/api/v1/behandler/$providerId"
+                respond(
+                    content = externalProviderJson(providerId),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
 
-            respond(
-                content = externalProviderJson(providerId),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+            val response = client.getProvider(providerId)
+
+            val provider = response.shouldBeRight()
+            provider.providerReference shouldBe providerId
+            provider.nationalIdentityNumber shouldBe personident("13326920147")
+            provider.firstName shouldBe "Kari"
+            provider.middleName shouldBe "Anne"
+            provider.lastName shouldBe "Hansen"
+            provider.herId shouldBe null
+            provider.hprId shouldBe 7654321
+            provider.phoneNumber shouldBe "22000000"
+            provider.category shouldBe ProviderCategory.DOCTOR
+            provider.office.herId shouldBe null
+            provider.office.name shouldBe "Sentrum legesenter"
+            provider.office.address shouldBe "Storgata 15"
+            provider.office.postalCode shouldBe "0158"
+            provider.office.city shouldBe "Oslo"
+            provider.office.organisationNumber shouldBe organisationNumber("987654321")
         }
 
-        val response = client.getProvider(providerId)
+        "status OK should ignore invalid optional identifiers" {
+            val providerId = Uuid.random()
 
-        val provider = response.shouldBeRight()
-        provider.providerReference shouldBe providerId
-        provider.nationalIdentityNumber shouldBe personident("13326920147")
-        provider.firstName shouldBe "Kari"
-        provider.middleName shouldBe "Anne"
-        provider.lastName shouldBe "Hansen"
-        provider.herId shouldBe null
-        provider.hprId shouldBe 7654321
-        provider.phoneNumber shouldBe "22000000"
-        provider.category shouldBe ProviderCategory.DOCTOR
-        provider.office.herId shouldBe null
-        provider.office.name shouldBe "Sentrum legesenter"
-        provider.office.address shouldBe "Storgata 15"
-        provider.office.postalCode shouldBe "0158"
-        provider.office.city shouldBe "Oslo"
-        provider.office.organisationNumber shouldBe organisationNumber("987654321")
-    }
+            val client = testClient {
+                respond(
+                    content = externalProviderJson(
+                        behandlerRef = providerId,
+                        fnr = "invalid-fnr",
+                        orgnummer = "invalid-orgnummer"
+                    ),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
 
-    "status OK should ignore invalid optional identifiers" {
-        val providerId = Uuid.random()
+            val response = client.getProvider(providerId)
 
-        val client = testClient {
-            respond(
-                content = externalProviderJson(
-                    behandlerRef = providerId,
-                    fnr = "invalid-fnr",
-                    orgnummer = "invalid-orgnummer"
-                ),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            )
+            val provider = response.shouldBeRight()
+            provider.nationalIdentityNumber shouldBe null
+            provider.office.organisationNumber shouldBe null
         }
 
-        val response = client.getProvider(providerId)
+        "status not OK should return HttpError" {
+            val client = testClient {
+                respond(
+                    content = "Provider not found",
+                    status = HttpStatusCode.NotFound
+                )
+            }
 
-        val provider = response.shouldBeRight()
-        provider.nationalIdentityNumber shouldBe null
-        provider.office.organisationNumber shouldBe null
-    }
+            val response = client.getProvider(Uuid.random())
 
-    "status not OK should return HttpError" {
-        val client = testClient {
-            respond(
-                content = "Provider not found",
-                status = HttpStatusCode.NotFound
-            )
+            val error = response.shouldBeLeft()
+            val httpError = error.shouldBeInstanceOf<HttpError>()
+            httpError.statusCode shouldBe HttpStatusCode.NotFound.value
+            httpError.message shouldBe "Provider not found"
         }
 
-        val response = client.getProvider(Uuid.random())
+        "request failure should return UnexpectedClientError" {
+            val client = testClient {
+                throw RuntimeException("ProviderRegistry unavailable")
+            }
 
-        val error = response.shouldBeLeft()
-        val httpError = error.shouldBeInstanceOf<HttpError>()
-        httpError.statusCode shouldBe HttpStatusCode.NotFound.value
-        httpError.message shouldBe "Provider not found"
-    }
-    "request failure should return UnexpectedClientError" {
-        val client = testClient {
-            throw RuntimeException("ProviderRegistry unavailable")
+            val response = client.getProvider(Uuid.random())
+
+            val error = response.shouldBeLeft()
+            val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+            unexpectedError.message shouldBe "Failed to request provider from ProviderRegistry: ProviderRegistry unavailable"
         }
-
-        val response = client.getProvider(Uuid.random())
-
-        val error = response.shouldBeLeft()
-        val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
-        unexpectedError.message shouldBe "Failed to request provider from ProviderRegistry: ProviderRegistry unavailable"
     }
-})
+)
 
 private fun externalProviderJson(
     behandlerRef: Uuid,

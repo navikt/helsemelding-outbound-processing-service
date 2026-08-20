@@ -3,7 +3,7 @@ package no.nav.helsemelding.outbound.processing.client.auth
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.engine.cio.CIOEngineConfig
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
@@ -18,11 +18,9 @@ import kotlinx.serialization.json.Json
 import no.nav.helsemelding.outbound.processing.config.AzureAuth
 import no.nav.helsemelding.outbound.processing.config.HttpClientConfig
 
-internal fun httpTokenClient(httpClientConfig: HttpClientConfig): HttpClient =
+internal fun httpTokenClient(config: HttpClientConfig): HttpClient =
     HttpClient(CIO) {
-        install(HttpTimeout) {
-            connectTimeoutMillis = httpClientConfig.connectionTimeout.inWholeMilliseconds
-        }
+        engine { configureConnections(config) }
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
         }
@@ -31,15 +29,13 @@ internal fun httpTokenClient(httpClientConfig: HttpClientConfig): HttpClient =
 internal fun scopedAuthHttpClient(
     tokenClient: HttpClient,
     azureAuth: AzureAuth,
-    httpClientConfig: HttpClientConfig,
-    scope: String
+    scope: String,
+    config: HttpClientConfig
 ): HttpClient =
     HttpClient(CIO) {
-        install(HttpTimeout) {
-            connectTimeoutMillis = httpClientConfig.connectionTimeout.inWholeMilliseconds
-        }
+        engine { configureConnections(config) }
         install(ContentNegotiation) {
-            json()
+            json(Json { ignoreUnknownKeys = true })
         }
         install(Auth) {
             bearer {
@@ -52,7 +48,7 @@ internal fun scopedAuthHttpClient(
         }
     }
 
-private suspend fun submitTokenForm(
+internal suspend fun submitTokenForm(
     tokenClient: HttpClient,
     azureAuth: AzureAuth,
     scope: String
@@ -73,3 +69,11 @@ internal data class TokenInfo(
     @SerialName("expires_in") val expiresIn: Int,
     @SerialName("token_type") val tokenType: String
 )
+
+private fun CIOEngineConfig.configureConnections(config: HttpClientConfig) {
+    maxConnectionsCount = config.maxConnectionsCount
+    requestTimeout = config.requestTimeout.inWholeMilliseconds
+    endpoint.keepAliveTime = config.keepAliveTime.inWholeMilliseconds
+    endpoint.connectTimeout = config.connectionTimeout.inWholeMilliseconds
+    endpoint.socketTimeout = config.socketTimeout.inWholeMilliseconds
+}

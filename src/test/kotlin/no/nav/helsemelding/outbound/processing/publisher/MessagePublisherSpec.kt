@@ -100,7 +100,7 @@ class MessagePublisherSpec : KafkaSpec(
             val error = publisher.publish(processedMessage).shouldBeLeft()
 
             error shouldBe PublishError.Failure(
-                referenceId = processedMessage.key,
+                key = processedMessage.key,
                 topic = topics.dialogMessageOutXml,
                 cause = failure
             )

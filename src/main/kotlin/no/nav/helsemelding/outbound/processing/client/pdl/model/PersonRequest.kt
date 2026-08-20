@@ -15,5 +15,5 @@ data class PersonVariables(
     val nationalIdentityNumber: String,
 
     @SerialName("navnHistorikk")
-    val includeNameHistory: Boolean = false
+    val includeNameHistory: Boolean
 )

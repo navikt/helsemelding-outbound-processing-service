@@ -131,7 +131,7 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             val receiver = FakeMessageReceiver(message)
             val publishError = PublishError.Failure(
-                referenceId = message.key.orEmpty(),
+                key = message.key.orEmpty(),
                 topic = message.topic,
                 cause = RuntimeException("Publish failed")
             )
