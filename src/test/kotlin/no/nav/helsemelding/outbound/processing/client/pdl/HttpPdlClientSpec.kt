@@ -36,7 +36,8 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonName
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonNotFound
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonRequest
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonResponse
-import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedClientError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedError
+import no.nav.helsemelding.outbound.processing.model.ErrorCode
 
 private const val PROCESSING_NUMBER_HEADER_KEY = "Behandlingsnummer"
 private const val PROCESSING_NUMBER_HEADER_VALUE = "B123"
@@ -96,6 +97,7 @@ class HttpPdlClientSpec : StringSpec(
 
             val error = response.shouldBeLeft()
             val personNotFoundError = error.shouldBeInstanceOf<GraphQlError>()
+            personNotFoundError.code shouldBe ErrorCode.PDL_ERROR
             personNotFoundError.message shouldBe "Error while requesting person from PDL"
             personNotFoundError.errors.size shouldBe 1
         }
@@ -128,6 +130,7 @@ class HttpPdlClientSpec : StringSpec(
 
             val error = response.shouldBeLeft()
             val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
+            personNotFoundError.code shouldBe ErrorCode.PDL_ERROR
             personNotFoundError.message shouldBe "Person not found"
         }
 
@@ -154,6 +157,7 @@ class HttpPdlClientSpec : StringSpec(
 
             val error = response.shouldBeLeft()
             val personNotFoundError = error.shouldBeInstanceOf<PersonNotFound>()
+            personNotFoundError.code shouldBe ErrorCode.PDL_ERROR
             personNotFoundError.message shouldBe "Person not found"
         }
 
@@ -169,11 +173,12 @@ class HttpPdlClientSpec : StringSpec(
 
             val error = response.shouldBeLeft()
             val fetchingError = error.shouldBeInstanceOf<HttpError>()
+            fetchingError.code shouldBe ErrorCode.PDL_ERROR
             fetchingError.statusCode shouldBe HttpStatusCode.ServiceUnavailable.value
             fetchingError.message shouldBe "Service Unavailable"
         }
 
-        "request failure should return UnexpectedClientError" {
+        "request failure should return UnexpectedError" {
             val client = testClient {
                 throw RuntimeException("PDL unavailable")
             }
@@ -181,11 +186,12 @@ class HttpPdlClientSpec : StringSpec(
             val response = client.getPersonName(personident)
 
             val error = response.shouldBeLeft()
-            val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+            val unexpectedError = error.shouldBeInstanceOf<UnexpectedError>()
+            unexpectedError.code shouldBe ErrorCode.PDL_ERROR
             unexpectedError.message shouldBe "Failed to request person from PDL: PDL unavailable"
         }
 
-        "status OK and invalid response body should return UnexpectedClientError" {
+        "status OK and invalid response body should return UnexpectedError" {
             val client = testClient {
                 respond(
                     content = "not json",

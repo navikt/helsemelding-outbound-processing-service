@@ -8,11 +8,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import no.nav.helsemelding.messageconverter.error.ConversionError
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
+import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ErrorMessage
 import no.nav.helsemelding.outbound.processing.model.OriginalMessage
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
@@ -116,10 +115,10 @@ private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): Error
         )
     )
 
-private fun ConversionError.toProcessingError(): ProcessingError =
+private fun OutgoingMessageError.toProcessingError(): ProcessingError =
     ProcessingError(
         category = ErrorCategory.CONVERSION,
-        code = ErrorCode.CONVERSION_ERROR,
+        code = code,
         message = message
     )
 
