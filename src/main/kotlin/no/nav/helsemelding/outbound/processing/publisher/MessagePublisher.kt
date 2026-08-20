@@ -67,7 +67,7 @@ class OutboundMessagePublisher(
 
 private fun RecordMetadata.logPublished(topic: String, key: String) {
     log.info {
-        "Published message key=$key topic=$topic partition=${partition()} offset=${offset()}"
+        "Published message: key=$key topic=$topic partition=${partition()} offset=${offset()}"
     }
 }
 
