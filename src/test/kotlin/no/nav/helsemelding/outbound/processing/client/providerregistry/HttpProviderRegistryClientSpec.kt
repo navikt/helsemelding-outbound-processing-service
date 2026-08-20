@@ -55,11 +55,11 @@ class HttpProviderRegistryClientSpec : StringSpec(
             provider.firstName shouldBe "Kari"
             provider.middleName shouldBe "Anne"
             provider.lastName shouldBe "Hansen"
-            provider.herId shouldBe null
+            provider.herId shouldBe 123456
             provider.hprId shouldBe 7654321
             provider.phoneNumber shouldBe "22000000"
             provider.category shouldBe ProviderCategory.DOCTOR
-            provider.office.herId shouldBe null
+            provider.office.herId shouldBe 654321
             provider.office.name shouldBe "Sentrum legesenter"
             provider.office.address shouldBe "Storgata 15"
             provider.office.postalCode shouldBe "0158"
@@ -123,12 +123,16 @@ private fun externalProviderJson(
     behandlerRef: Uuid,
     fnr: String? = "13326920147",
     orgnummer: String? = "987654321",
+    herId: Int? = 123456,
+    kontorHerId: Int? = 654321,
     extraField: String = ""
 ): String =
     externalProviderJson(
         behandlerRef = behandlerRef.toString(),
         fnr = fnr,
         orgnummer = orgnummer,
+        herId = herId,
+        kontorHerId = kontorHerId,
         extraField = extraField
     )
 
@@ -136,6 +140,8 @@ private fun externalProviderJson(
     behandlerRef: String,
     fnr: String? = "13326920147",
     orgnummer: String? = "987654321",
+    herId: Int? = 123456,
+    kontorHerId: Int? = 654321,
     extraField: String = ""
 ): String =
     """
@@ -145,11 +151,13 @@ private fun externalProviderJson(
       "kategori": "LEGE",
       "fnr": ${fnr.jsonValue()},
       "hprId": 7654321,
+      "herId": ${herId.jsonValue()},
       "fornavn": "Kari",
       "mellomnavn": "Anne",
       "etternavn": "Hansen",
       "orgnummer": ${orgnummer.jsonValue()},
       "kontor": "Sentrum legesenter",
+      "kontorHerId": ${kontorHerId.jsonValue()},
       "adresse": "Storgata 15",
       "postnummer": "0158",
       "poststed": "Oslo",
@@ -160,6 +168,9 @@ private fun externalProviderJson(
 
 private fun String?.jsonValue(): String =
     this?.let { """"$it"""" } ?: "null"
+
+private fun Int?.jsonValue(): String =
+    this?.toString() ?: "null"
 
 private fun testClient(
     handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
