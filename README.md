@@ -29,7 +29,7 @@ The service validates:
 - Kafka record has a non-empty `sourceSystem` header
 - Kafka record value is a valid outgoing dialog message according to the JSON schema
 
-Validation failures are published to the error topic. Conversion failures are also published to the error topic.
+Validation and conversion failures are published to the error topic.
 
 ## Topics
 
@@ -62,6 +62,8 @@ Example error message:
 }
 ```
 
+Conversion failures may originate from message conversion, PDL lookups, or provider registry lookups.
+
 Error codes:
 
 - `INVALID_KAFKA_KEY`
@@ -69,3 +71,5 @@ Error codes:
 - `MISSING_SOURCE_SYSTEM_HEADER`
 - `INVALID_MESSAGE`
 - `CONVERSION_ERROR`
+- `PDL_ERROR`
+- `PROVIDER_REGISTRY_ERROR`
