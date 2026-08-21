@@ -27,7 +27,8 @@ import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
 import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderCategory
 import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderOffice
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.HttpError
-import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedClientError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedError
+import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import java.time.OffsetDateTime
 import kotlin.uuid.Uuid
 
@@ -101,11 +102,12 @@ class HttpProviderRegistryClientSpec : StringSpec(
 
             val error = response.shouldBeLeft()
             val httpError = error.shouldBeInstanceOf<HttpError>()
+            httpError.code shouldBe ErrorCode.PROVIDER_REGISTRY_ERROR
             httpError.statusCode shouldBe HttpStatusCode.NotFound.value
             httpError.message shouldBe "Provider not found"
         }
 
-        "request failure should return UnexpectedClientError" {
+        "request failure should return UnexpectedError" {
             val client = testClient {
                 throw RuntimeException("ProviderRegistry unavailable")
             }
@@ -113,7 +115,8 @@ class HttpProviderRegistryClientSpec : StringSpec(
             val response = client.getProvider(Uuid.random())
 
             val error = response.shouldBeLeft()
-            val unexpectedError = error.shouldBeInstanceOf<UnexpectedClientError>()
+            val unexpectedError = error.shouldBeInstanceOf<UnexpectedError>()
+            unexpectedError.code shouldBe ErrorCode.PROVIDER_REGISTRY_ERROR
             unexpectedError.message shouldBe "Failed to request provider from ProviderRegistry: ProviderRegistry unavailable"
         }
     }

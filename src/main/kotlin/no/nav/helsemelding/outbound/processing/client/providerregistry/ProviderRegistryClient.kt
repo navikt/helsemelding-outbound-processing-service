@@ -14,10 +14,10 @@ import io.ktor.http.ContentType.Application.Json
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
-import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ClientError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ExternalProvider
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.HttpError
-import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedClientError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.ProviderRegistryError
+import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.toProvider
 import kotlin.uuid.Uuid
 
@@ -26,7 +26,7 @@ private val log = KotlinLogging.logger {}
 private const val PROVIDER_PATH = "/api/v1/behandler"
 
 fun interface ProviderRegistryClient {
-    suspend fun getProvider(providerId: Uuid): Either<ClientError, Provider>
+    suspend fun getProvider(providerId: Uuid): Either<ProviderRegistryError, Provider>
 }
 
 class HttpProviderRegistryClient(
@@ -35,7 +35,7 @@ class HttpProviderRegistryClient(
 ) : ProviderRegistryClient {
     private val httpClient = clientProvider()
 
-    override suspend fun getProvider(providerId: Uuid): Either<ClientError, Provider> =
+    override suspend fun getProvider(providerId: Uuid): Either<ProviderRegistryError, Provider> =
         either {
             val response = fetchProvider(providerId).bind()
 
@@ -52,7 +52,7 @@ class HttpProviderRegistryClient(
             response.body<ExternalProvider>().toProvider()
         }
 
-    private suspend fun fetchProvider(providerId: Uuid): Either<ClientError, HttpResponse> =
+    private suspend fun fetchProvider(providerId: Uuid): Either<ProviderRegistryError, HttpResponse> =
         Either.catch {
             httpClient.get("$providerRegistryBaseUrl$PROVIDER_PATH/$providerId") {
                 contentType(Json)
@@ -61,7 +61,7 @@ class HttpProviderRegistryClient(
             .mapLeft { it.toUnexpectedError("Failed to request provider from ProviderRegistry") }
 }
 
-private suspend fun HttpResponse.toHttpError(): Either<ClientError, HttpError> =
+private suspend fun HttpResponse.toHttpError(): Either<ProviderRegistryError, HttpError> =
     either {
         HttpError(
             statusCode = status.value,
@@ -71,20 +71,20 @@ private suspend fun HttpResponse.toHttpError(): Either<ClientError, HttpError> =
         )
     }
 
-private fun Throwable.toUnexpectedError(message: String): UnexpectedClientError =
-    UnexpectedClientError(
+private fun Throwable.toUnexpectedError(message: String): UnexpectedError =
+    UnexpectedError(
         message = "$message: ${this.message ?: this::class.simpleName.orEmpty()}",
         cause = this
     )
 
 class FakeProviderRegistryClient : ProviderRegistryClient {
-    private val providerById = mutableMapOf<Uuid, Either<ClientError, Provider>>()
+    private val providerById = mutableMapOf<Uuid, Either<ProviderRegistryError, Provider>>()
 
-    fun givenProvider(uuid: Uuid, either: Either<ClientError, Provider>) {
+    fun givenProvider(uuid: Uuid, either: Either<ProviderRegistryError, Provider>) {
         providerById[uuid] = either
     }
 
-    override suspend fun getProvider(providerId: Uuid): Either<ClientError, Provider> {
+    override suspend fun getProvider(providerId: Uuid): Either<ProviderRegistryError, Provider> {
         return providerById[providerId] ?: Either.Left(
             HttpError(
                 statusCode = HttpStatusCode.Forbidden.value,

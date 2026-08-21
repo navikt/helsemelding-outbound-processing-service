@@ -5,10 +5,11 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
-import no.nav.helsemelding.messageconverter.error.AdditionalMessageInfoError
 import no.nav.helsemelding.outbound.processing.PublishError
+import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
 import no.nav.helsemelding.outbound.processing.conversion.FakeOutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
+import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
@@ -95,8 +96,17 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
+            val processingError = ProcessingError(
+                category = ErrorCategory.CONVERSION,
+                code = ErrorCode.PDL_ERROR,
+                message = "Could not resolve additional message info"
+            )
             val converter = FakeOutgoingMessageConverter(
-                Either.Left(AdditionalMessageInfoError("Could not resolve additional message info"))
+                Either.Left(
+                    OutgoingMessageError.Client(
+                        GraphQlError("Could not resolve additional message info")
+                    )
+                )
             )
 
             val service = messageProcessingService(
@@ -112,13 +122,7 @@ class MessageProcessingServiceSpec : StringSpec(
             errorMessage.sourceSystem shouldBe message.sourceSystem
             errorMessage.originalMessage.key shouldBe message.key
             errorMessage.originalMessage.payload shouldBe message.payload
-            errorMessage.errors shouldContainExactly listOf(
-                ProcessingError(
-                    category = ErrorCategory.CONVERSION,
-                    code = ErrorCode.CONVERSION_ERROR,
-                    message = "Could not resolve additional message info"
-                )
-            )
+            errorMessage.errors shouldContainExactly listOf(processingError)
             publisher.processedMessages shouldBe emptyList()
             converter.payloads shouldContainExactly listOf(message.payload)
             acknowledgement.acknowledged shouldBe true

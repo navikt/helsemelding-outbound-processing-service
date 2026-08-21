@@ -5,16 +5,15 @@ import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.nav.helsemelding.messageconverter.AdditionalMessageInfoProvider
 import no.nav.helsemelding.messageconverter.MessageConverter
-import no.nav.helsemelding.messageconverter.error.AdditionalMessageInfoError
 import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.messageconverter.msghead.model.AdditionalMessageInfo
 import no.nav.helsemelding.messageconverter.msghead.model.Employee
+import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.createProvider
 import kotlin.uuid.Uuid
 
@@ -54,6 +53,10 @@ class OutgoingMessageConverterSpec : StringSpec(
             val json = OutgoingDialogMessageSerializer().serialize(dialogMessage).shouldBeRight()
             val resolver = FakeAdditionalMessageInfoResolver()
             val messageConverter = mockk<MessageConverter>()
+            val outgoingMessageError = OutgoingMessageError.Client(
+                GraphQlError("Missing additional message info for message ${dialogMessage.id}")
+            )
+            resolver.givenAdditionalMessageInfo(dialogMessage.id, Either.Left(outgoingMessageError))
 
             val converter = MsgHeadOutgoingMessageConverter(
                 additionalMessageInfoResolver = resolver,
@@ -62,8 +65,7 @@ class OutgoingMessageConverterSpec : StringSpec(
 
             val error = converter.outgoingDialogMessageJsonToXml(json).shouldBeLeft()
 
-            error.shouldBeInstanceOf<AdditionalMessageInfoError>()
-            error.message shouldBe "Missing additional message info for message ${dialogMessage.id}"
+            error shouldBe outgoingMessageError
             verify(exactly = 0) {
                 messageConverter.outgoingDialogMessageJsonToXml(any())
             }
