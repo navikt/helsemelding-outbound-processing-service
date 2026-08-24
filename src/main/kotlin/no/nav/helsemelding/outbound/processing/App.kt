@@ -52,7 +52,8 @@ private fun messageProcessingService(
 ): MessageProcessingService {
     val additionalMessageInfoResolver = HttpAdditionalMessageInfoResolver(
         pdlClient = deps.pdlClient,
-        providerRegistryClient = deps.providerRegistryClient
+        providerRegistryClient = deps.providerRegistryClient,
+        providerHerIdOverride = config.providerHerIdOverride
     )
 
     return MessageProcessingService(

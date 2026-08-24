@@ -9,8 +9,10 @@ import no.nav.helsemelding.messageconverter.error.AdditionalMessageInfoError
 import no.nav.helsemelding.messageconverter.msghead.model.AdditionalMessageInfo
 import no.nav.helsemelding.messageconverter.msghead.model.Employee
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
+import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
 import no.nav.helsemelding.outbound.processing.client.pdl.PdlClient
 import no.nav.helsemelding.outbound.processing.client.providerregistry.ProviderRegistryClient
+import no.nav.helsemelding.outbound.processing.config.ProviderHerIdOverride
 import kotlin.uuid.Uuid
 
 interface AdditionalMessageInfoResolver {
@@ -19,7 +21,8 @@ interface AdditionalMessageInfoResolver {
 
 class HttpAdditionalMessageInfoResolver(
     private val pdlClient: PdlClient,
-    private val providerRegistryClient: ProviderRegistryClient
+    private val providerRegistryClient: ProviderRegistryClient,
+    private val providerHerIdOverride: ProviderHerIdOverride
 ) : AdditionalMessageInfoResolver {
     override suspend fun resolve(dialogMessage: OutgoingDialogMessage): Either<OutgoingMessageError, AdditionalMessageInfo> =
         either {
@@ -27,6 +30,7 @@ class HttpAdditionalMessageInfoResolver(
             val provider = withError(OutgoingMessageError::Client) {
                 providerRegistryClient.getProvider(providerId).bind()
             }
+                .let(providerHerIdOverride::apply)
 
             val patientIdent = withError(OutgoingMessageError::Conversion) {
                 Personident(dialogMessage.patientIdent).bind()
@@ -47,6 +51,13 @@ class HttpAdditionalMessageInfoResolver(
             AdditionalMessageInfo(provider, employee)
         }
 }
+
+private fun ProviderHerIdOverride.apply(provider: Provider): Provider =
+    provider.copy(
+        office = provider.office.copy(
+            herId = officeHerId ?: provider.office.herId
+        )
+    )
 
 private fun OutgoingDialogMessage.providerUuid(): Either<OutgoingMessageError, Uuid> =
     either {
