@@ -17,6 +17,7 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonName
 import no.nav.helsemelding.outbound.processing.client.providerregistry.FakeProviderRegistryClient
 import no.nav.helsemelding.outbound.processing.client.providerregistry.ProviderRegistryClient
 import no.nav.helsemelding.outbound.processing.client.providerregistry.createProvider
+import no.nav.helsemelding.outbound.processing.config.ProviderHerIdOverride
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import kotlin.uuid.Uuid
 
@@ -49,6 +50,38 @@ class AdditionalMessageInfoResolverSpec : StringSpec(
             info.employee.middleName shouldBe personName.middleName
             info.employee.lastName shouldBe personName.lastName
             info.provider shouldBeEqualUsingFields provider
+        }
+
+        "should override provider office her id when configured" {
+            val providerRegistryClient = FakeProviderRegistryClient()
+            val provider = createProvider(providerId)
+            providerRegistryClient.givenProvider(providerId, Either.Right(provider))
+            val pdlClient = FakePdlClient()
+            pdlClient.givenPersonName(
+                patientIdent,
+                Either.Right(
+                    PersonName(
+                        firstName = "Ola",
+                        middleName = "Jens",
+                        lastName = "Nordmann"
+                    )
+                )
+            )
+            val resolver = additionalMessageInfoResolver(
+                pdlClient = pdlClient,
+                providerRegistryClient = providerRegistryClient,
+                providerHerIdOverride = ProviderHerIdOverride(
+                    officeHerId = 654321
+                )
+            )
+
+            val info = resolver.resolve(dialogMessage).shouldBeRight()
+
+            info.provider shouldBeEqualUsingFields provider.copy(
+                office = provider.office.copy(
+                    herId = 654321
+                )
+            )
         }
 
         "should return provider registry error when provider registry returns error" {
@@ -91,10 +124,12 @@ class AdditionalMessageInfoResolverSpec : StringSpec(
 
 private fun additionalMessageInfoResolver(
     pdlClient: PdlClient = FakePdlClient(),
-    providerRegistryClient: ProviderRegistryClient = FakeProviderRegistryClient()
+    providerRegistryClient: ProviderRegistryClient = FakeProviderRegistryClient(),
+    providerHerIdOverride: ProviderHerIdOverride = ProviderHerIdOverride()
 ): AdditionalMessageInfoResolver = HttpAdditionalMessageInfoResolver(
     pdlClient = pdlClient,
-    providerRegistryClient = providerRegistryClient
+    providerRegistryClient = providerRegistryClient,
+    providerHerIdOverride = providerHerIdOverride
 )
 
 fun outgoingDialogMessage(
