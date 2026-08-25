@@ -69,5 +69,7 @@ spec:
           namespace: teamsykefravr
           cluster: dev-gcp
   env:
+    - name: PROVIDER_HER_ID
+      value: "8142520"
     - name: PROVIDER_OFFICE_HER_ID
       value: "8142520"
