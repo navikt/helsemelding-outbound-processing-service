@@ -54,6 +54,7 @@ class HttpAdditionalMessageInfoResolver(
 
 private fun ProviderHerIdOverride.apply(provider: Provider): Provider =
     provider.copy(
+        herId = herId ?: provider.herId,
         office = provider.office.copy(
             herId = officeHerId ?: provider.office.herId
         )

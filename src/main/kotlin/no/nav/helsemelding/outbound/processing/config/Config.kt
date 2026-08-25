@@ -106,6 +106,7 @@ data class ProviderRegistry(
 )
 
 data class ProviderHerIdOverride(
+    val herId: Int? = null,
     val officeHerId: Int? = null
 )
 
