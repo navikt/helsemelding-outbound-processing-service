@@ -21,6 +21,10 @@ import no.nav.helsemelding.outbound.processing.receiver.FakeMessageReceiver
 import no.nav.helsemelding.outbound.processing.receiver.MessageReceiver
 import no.nav.helsemelding.outbound.processing.validation.FakeSchemaValidator
 import no.nav.helsemelding.outbound.processing.validation.MessageValidator
+import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
+import no.nav.helsemelding.payloadsigning.model.MessageSigningError
+import no.nav.helsemelding.payloadsigning.model.PayloadRequest
+import no.nav.helsemelding.payloadsigning.model.PayloadResponse
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
@@ -70,12 +74,14 @@ class MessageProcessingServiceSpec : StringSpec(
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
             val converter = FakeOutgoingMessageConverter(Either.Right("<xml />"))
+            val payloadSigningClient = FakePayloadSigningClient()
 
             val service = messageProcessingService(
                 receiver = receiver,
                 publisher = publisher,
                 converter = converter,
-                schemaValidator = FakeSchemaValidator()
+                schemaValidator = FakeSchemaValidator(),
+                payloadSigningClient = payloadSigningClient
             )
 
             service.processMessage(message)
@@ -169,13 +175,15 @@ private fun messageProcessingService(
     receiver: MessageReceiver,
     publisher: MessagePublisher,
     converter: OutgoingMessageConverter,
-    schemaValidator: SchemaValidator = FakeSchemaValidator()
+    schemaValidator: SchemaValidator = FakeSchemaValidator(),
+    payloadSigningClient: PayloadSigningClient = FakePayloadSigningClient()
 ): MessageProcessingService =
     MessageProcessingService(
         messageReceiver = receiver,
         messagePublisher = publisher,
         messageValidator = MessageValidator(schemaValidator),
-        outgoingMessageConverter = converter
+        outgoingMessageConverter = converter,
+        payloadSigningClient = payloadSigningClient
     )
 
 private fun receivedMessage(
@@ -201,4 +209,19 @@ private class Acknowledgement {
     suspend fun acknowledge() {
         acknowledged = true
     }
+}
+
+private class FakePayloadSigningClient(
+    private val result: (PayloadRequest) -> Either<MessageSigningError, PayloadResponse> = { request ->
+        Either.Right(PayloadResponse(request.bytes))
+    }
+) : PayloadSigningClient {
+    val requests = mutableListOf<PayloadRequest>()
+
+    override suspend fun signPayload(payloadRequest: PayloadRequest): Either<MessageSigningError, PayloadResponse> {
+        requests.add(payloadRequest)
+        return result(payloadRequest)
+    }
+
+    override fun close() = Unit
 }

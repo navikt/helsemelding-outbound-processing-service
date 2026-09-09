@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.token.validation.ktor.v3)
     implementation(libs.bundles.opentelemetry)
     implementation(libs.message.converter)
+    implementation(libs.payload.signing.client)
 
     testImplementation(testLibs.bundles.kotest)
     testImplementation(testLibs.kotest.assertions.arrow)

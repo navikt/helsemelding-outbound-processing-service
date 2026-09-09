@@ -66,7 +66,8 @@ private fun messageProcessingService(
             kafkaPublisher = deps.kafkaPublisher
         ),
         messageValidator = MessageValidator(),
-        outgoingMessageConverter = MsgHeadOutgoingMessageConverter(additionalMessageInfoResolver)
+        outgoingMessageConverter = MsgHeadOutgoingMessageConverter(additionalMessageInfoResolver),
+        payloadSigningClient = deps.payloadSigningClient
     )
 }
 
