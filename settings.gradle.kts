@@ -27,7 +27,7 @@ dependencyResolutionManagement {
             version("opentelemetry-mdc", "2.24.0-alpha")
             version("opentelemetry-extension-kotlin", "1.58.0")
             version("message-converter", "0.0.4")
-            version("payload-signing-client", "0.0.1")
+            version("payload-signing-client", "0.0.2")
 
             library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")
             library("arrow-functions", "io.arrow-kt", "arrow-functions").versionRef("arrow")
