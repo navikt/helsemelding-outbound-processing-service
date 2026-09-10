@@ -5,7 +5,7 @@ Processes outbound dialog messages from Kafka. The service receives JSON message
 ## Flow
 
 ```text
-helsemelding.dialog.out.json
+helsemelding.dialog.out
     |
     v
 MessageReceiver
@@ -35,7 +35,7 @@ Validation and conversion failures are published to the error topic.
 
 Default topic config:
 
-- Input JSON: `helsemelding.dialog.out.json`
+- Input JSON: `helsemelding.dialog.out`
 - Output XML: `helsemelding.dialog.out.xml`
 - Error messages: `helsemelding.dialog.out.error`
 
