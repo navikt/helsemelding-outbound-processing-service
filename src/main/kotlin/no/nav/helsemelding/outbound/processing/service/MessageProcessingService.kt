@@ -100,7 +100,7 @@ class MessageProcessingService(
                 )
 
             is Right -> {
-                val signedMessage = String(result.value.bytes)
+                val signedMessage = result.value.bytes.decodeToString()
                 messagePublisher.publish(toProcessedMessage(signedMessage))
             }
         }
