@@ -18,7 +18,8 @@ data class Config(
     val providerHerIdOverride: ProviderHerIdOverride,
     val server: Server,
     val azureAuth: AzureAuth,
-    val httpClient: HttpClientConfig
+    val httpClient: HttpClientConfig,
+    val payloadSigning: PayloadSigning
 )
 
 data class Kafka(
@@ -102,6 +103,10 @@ data class Pdl(
 
 data class ProviderRegistry(
     val baseUrl: String,
+    val scope: String
+)
+
+data class PayloadSigning(
     val scope: String
 )
 

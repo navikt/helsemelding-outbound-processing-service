@@ -21,6 +21,11 @@ import no.nav.helsemelding.outbound.processing.receiver.FakeMessageReceiver
 import no.nav.helsemelding.outbound.processing.receiver.MessageReceiver
 import no.nav.helsemelding.outbound.processing.validation.FakeSchemaValidator
 import no.nav.helsemelding.outbound.processing.validation.MessageValidator
+import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
+import no.nav.helsemelding.payloadsigning.model.Direction
+import no.nav.helsemelding.payloadsigning.model.MessageSigningError
+import no.nav.helsemelding.payloadsigning.model.PayloadRequest
+import no.nav.helsemelding.payloadsigning.model.PayloadResponse
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
@@ -60,7 +65,7 @@ class MessageProcessingServiceSpec : StringSpec(
             acknowledgement.acknowledged shouldBe true
         }
 
-        "should convert and publish processed message when received message is valid" {
+        "should convert, sign and publish a message when it is valid" {
             val key = Uuid.random().toString()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
@@ -69,23 +74,68 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             val receiver = FakeMessageReceiver(message)
             val publisher = FakeMessagePublisher()
-            val converter = FakeOutgoingMessageConverter(Either.Right("<xml />"))
+            val unsignedXml = "<xml>Unsigned message</xml>"
+            val signedXml = "<xml>Signed message</xml>"
+            val converter = FakeOutgoingMessageConverter(Either.Right(unsignedXml))
+            val payloadSigningClient = FakePayloadSigningClient(
+                result = { Either.Right(PayloadResponse(signedXml.encodeToByteArray())) }
+            )
 
             val service = messageProcessingService(
                 receiver = receiver,
                 publisher = publisher,
                 converter = converter,
-                schemaValidator = FakeSchemaValidator()
+                schemaValidator = FakeSchemaValidator(),
+                payloadSigningClient = payloadSigningClient
             )
 
             service.processMessage(message)
 
             publisher.processedMessages.single() shouldBe ProcessedMessage(
                 key = key,
-                payload = "<xml />"
+                payload = signedXml
             )
+            payloadSigningClient.requests.single().direction shouldBe Direction.OUT
+            payloadSigningClient.requests.single().bytes.decodeToString() shouldBe unsignedXml
             publisher.errorMessages shouldBe emptyList()
             converter.payloads shouldContainExactly listOf(message.payload)
+            acknowledgement.acknowledged shouldBe true
+        }
+
+        "should publish signing error when payload signing fails" {
+            val acknowledgement = Acknowledgement()
+            val message = receivedMessage(
+                acknowledge = acknowledgement::acknowledge
+            )
+            val receiver = FakeMessageReceiver(message)
+            val publisher = FakeMessagePublisher()
+            val converter = FakeOutgoingMessageConverter(Either.Right("<xml />"))
+            val signingError = MessageSigningError(
+                code = 500,
+                message = "Payload signing failed"
+            )
+            val payloadSigningClient = FakePayloadSigningClient(
+                result = { Either.Left(signingError) }
+            )
+
+            val service = messageProcessingService(
+                receiver = receiver,
+                publisher = publisher,
+                converter = converter,
+                schemaValidator = FakeSchemaValidator(),
+                payloadSigningClient = payloadSigningClient
+            )
+
+            service.processMessage(message)
+
+            publisher.processedMessages shouldBe emptyList()
+            publisher.errorMessages.single().errors shouldContainExactly listOf(
+                ProcessingError(
+                    category = ErrorCategory.SIGNING,
+                    code = ErrorCode.SIGNING_ERROR,
+                    message = signingError.message
+                )
+            )
             acknowledgement.acknowledged shouldBe true
         }
 
@@ -169,13 +219,15 @@ private fun messageProcessingService(
     receiver: MessageReceiver,
     publisher: MessagePublisher,
     converter: OutgoingMessageConverter,
-    schemaValidator: SchemaValidator = FakeSchemaValidator()
+    schemaValidator: SchemaValidator = FakeSchemaValidator(),
+    payloadSigningClient: PayloadSigningClient = FakePayloadSigningClient()
 ): MessageProcessingService =
     MessageProcessingService(
         messageReceiver = receiver,
         messagePublisher = publisher,
         messageValidator = MessageValidator(schemaValidator),
-        outgoingMessageConverter = converter
+        outgoingMessageConverter = converter,
+        payloadSigningClient = payloadSigningClient
     )
 
 private fun receivedMessage(
@@ -201,4 +253,19 @@ private class Acknowledgement {
     suspend fun acknowledge() {
         acknowledged = true
     }
+}
+
+private class FakePayloadSigningClient(
+    private val result: (PayloadRequest) -> Either<MessageSigningError, PayloadResponse> = { request ->
+        Either.Right(PayloadResponse(request.bytes))
+    }
+) : PayloadSigningClient {
+    val requests = mutableListOf<PayloadRequest>()
+
+    override suspend fun signPayload(payloadRequest: PayloadRequest): Either<MessageSigningError, PayloadResponse> {
+        requests.add(payloadRequest)
+        return result(payloadRequest)
+    }
+
+    override fun close() = Unit
 }

@@ -19,8 +19,12 @@ import no.nav.helsemelding.outbound.processing.client.providerregistry.HttpProvi
 import no.nav.helsemelding.outbound.processing.client.providerregistry.ProviderRegistryClient
 import no.nav.helsemelding.outbound.processing.config.HttpClientConfig
 import no.nav.helsemelding.outbound.processing.config.Kafka
+import no.nav.helsemelding.outbound.processing.config.PayloadSigning
 import no.nav.helsemelding.outbound.processing.config.Pdl
 import no.nav.helsemelding.outbound.processing.config.ProviderRegistry
+import no.nav.helsemelding.payloadsigning.client.HttpPayloadSigningClient
+import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
+import no.nav.helsemelding.payloadsigning.client.scopedAuthHttpClient as payloadScopedAuthHttpClient
 
 private val log = KotlinLogging.logger {}
 
@@ -29,7 +33,8 @@ data class Dependencies(
     val kafkaReceiver: KafkaReceiver<String, ByteArray>,
     val kafkaPublisher: KafkaPublisher<String, ByteArray>,
     val pdlClient: PdlClient,
-    val providerRegistryClient: ProviderRegistryClient
+    val providerRegistryClient: ProviderRegistryClient,
+    val payloadSigningClient: PayloadSigningClient
 )
 
 internal suspend fun ResourceScope.metricsRegistry(): PrometheusMeterRegistry =
@@ -93,6 +98,11 @@ internal fun providerRegistryClient(
         providerRegistryBaseUrl = providerRegistry.baseUrl
     )
 
+internal suspend fun ResourceScope.payloadSigningClient(payloadSigning: PayloadSigning): PayloadSigningClient =
+    install({ HttpPayloadSigningClient(payloadScopedAuthHttpClient(payloadSigning.scope)) }) { p, _: ExitCase ->
+        p.close().also { log.info { "Closed payload signing client" } }
+    }
+
 suspend fun ResourceScope.dependencies(): Dependencies = awaitAll {
     val config = config()
 
@@ -114,12 +124,14 @@ suspend fun ResourceScope.dependencies(): Dependencies = awaitAll {
     val providerRegistryClient = async {
         providerRegistryClient(config.providerRegistry, providerRegistryHttpClient.await())
     }
+    val payloadSigningClient = async { payloadSigningClient(config.payloadSigning) }
 
     Dependencies(
         meterRegistry = metricsRegistry.await(),
         kafkaReceiver = kafkaReceiver,
         kafkaPublisher = kafkaPublisher.await(),
         pdlClient = pdlClient.await(),
-        providerRegistryClient = providerRegistryClient.await()
+        providerRegistryClient = providerRegistryClient.await(),
+        payloadSigningClient = payloadSigningClient.await()
     )
 }

@@ -68,6 +68,8 @@ spec:
         - application: isdialogmelding
           namespace: teamsykefravr
           cluster: dev-gcp
+        - application: payload-signing-service
+          cluster: dev-gcp
   env:
     - name: PROVIDER_HER_ID
       value: "8142520"

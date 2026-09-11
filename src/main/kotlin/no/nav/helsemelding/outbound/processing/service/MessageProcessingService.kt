@@ -12,6 +12,7 @@ import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
+import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ErrorMessage
 import no.nav.helsemelding.outbound.processing.model.OriginalMessage
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
@@ -23,6 +24,10 @@ import no.nav.helsemelding.outbound.processing.validation.MessageValidationResul
 import no.nav.helsemelding.outbound.processing.validation.MessageValidator
 import no.nav.helsemelding.outbound.processing.validation.errors
 import no.nav.helsemelding.outbound.processing.validation.isValid
+import no.nav.helsemelding.payloadsigning.client.PayloadSigningClient
+import no.nav.helsemelding.payloadsigning.model.Direction.OUT
+import no.nav.helsemelding.payloadsigning.model.MessageSigningError
+import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import org.apache.kafka.clients.producer.RecordMetadata
 import kotlin.time.Clock
 
@@ -32,7 +37,8 @@ class MessageProcessingService(
     private val messageReceiver: MessageReceiver,
     private val messagePublisher: MessagePublisher,
     private val messageValidator: MessageValidator,
-    private val outgoingMessageConverter: OutgoingMessageConverter
+    private val outgoingMessageConverter: OutgoingMessageConverter,
+    private val payloadSigningClient: PayloadSigningClient
 ) {
     fun processMessages(scope: CoroutineScope): Job =
         messageReceiver
@@ -43,28 +49,24 @@ class MessageProcessingService(
     internal suspend fun processMessage(message: ReceivedMessage) {
         message.logReceived()
 
-        val validation = message.validate()
-
-        when (val result = message.publish(validation)) {
+        when (val result = message.validate()) {
             is Left -> result.logPublishError()
             is Right -> message.acknowledge()
         }
     }
 
-    private fun ReceivedMessage.validate(): MessageValidationResult =
-        messageValidator.validate(
+    private suspend fun ReceivedMessage.validate(): Either<PublishError, RecordMetadata> {
+        val validationResult = messageValidator.validate(
             key = key,
             value = payload,
             sourceSystem = sourceSystem
         )
 
-    private suspend fun ReceivedMessage.publish(
-        validation: MessageValidationResult
-    ): Either<PublishError, RecordMetadata> =
-        when (validation.isValid()) {
-            true -> publishMessage()
-            false -> publishErrorMessage(validation)
+        return when (validationResult.isValid()) {
+            true -> convertToXml()
+            false -> publishErrorMessage(validationResult)
         }
+    }
 
     private suspend fun ReceivedMessage.publishErrorMessage(
         validation: MessageValidationResult
@@ -73,7 +75,7 @@ class MessageProcessingService(
             toErrorMessage(validation.errors())
         )
 
-    private suspend fun ReceivedMessage.publishMessage(): Either<PublishError, RecordMetadata> =
+    private suspend fun ReceivedMessage.convertToXml(): Either<PublishError, RecordMetadata> =
         when (val result = outgoingMessageConverter.outgoingDialogMessageJsonToXml(payload)) {
             is Left ->
                 messagePublisher.publish(
@@ -83,8 +85,24 @@ class MessageProcessingService(
                         )
                     )
                 )
+            is Right -> sign(result.value)
+        }
 
-            is Right -> messagePublisher.publish(toProcessedMessage(result.value))
+    private suspend fun ReceivedMessage.sign(xml: String): Either<PublishError, RecordMetadata> =
+        when (val result = payloadSigningClient.signPayload(PayloadRequest(OUT, xml.encodeToByteArray()))) {
+            is Left ->
+                messagePublisher.publish(
+                    toErrorMessage(
+                        listOf(
+                            result.value.toProcessingError()
+                        )
+                    )
+                )
+
+            is Right -> {
+                val signedMessage = result.value.bytes.decodeToString()
+                messagePublisher.publish(toProcessedMessage(signedMessage))
+            }
         }
 }
 
@@ -119,6 +137,13 @@ private fun OutgoingMessageError.toProcessingError(): ProcessingError =
     ProcessingError(
         category = ErrorCategory.CONVERSION,
         code = code,
+        message = message
+    )
+
+private fun MessageSigningError.toProcessingError(): ProcessingError =
+    ProcessingError(
+        category = ErrorCategory.SIGNING,
+        code = ErrorCode.SIGNING_ERROR,
         message = message
     )
 
