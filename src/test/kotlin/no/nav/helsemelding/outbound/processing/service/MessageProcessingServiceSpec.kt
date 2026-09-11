@@ -65,7 +65,7 @@ class MessageProcessingServiceSpec : StringSpec(
             acknowledgement.acknowledged shouldBe true
         }
 
-        "should convert and publish processed message when received message is valid" {
+        "should convert, sign and publish a message when it is valid" {
             val key = Uuid.random().toString()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
