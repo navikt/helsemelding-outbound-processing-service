@@ -24,7 +24,6 @@ The XML topic is consumed by `helsemelding-outbound-message-service`, which forw
 
 The service validates:
 
-- Kafka record key exists and is a valid UUID
 - Kafka record value exists and is not empty
 - Kafka record has a non-empty `sourceSystem` header
 - Kafka record value is a valid outgoing dialog message according to the JSON schema
@@ -50,13 +49,13 @@ Example error message:
   "errors": [
     {
       "category": "VALIDATION",
-      "code": "INVALID_KAFKA_KEY",
-      "message": "Kafka record key is not a valid UUID"
+      "code": "MISSING_SOURCE_SYSTEM_HEADER",
+      "message": "Kafka record header 'sourceSystem' is missing or empty"
     }
   ],
   "originalMessage": {
     "createdAt": "2026-05-21T12:15:41.901Z",
-    "key": "not-a-uuid",
+    "key": "null",
     "payload": "{\"hello\":\"world\"}"
   }
 }
@@ -66,7 +65,6 @@ Conversion failures may originate from message conversion, PDL lookups, or provi
 
 Error codes:
 
-- `INVALID_KAFKA_KEY`
 - `INVALID_KAFKA_VALUE`
 - `MISSING_SOURCE_SYSTEM_HEADER`
 - `INVALID_MESSAGE`

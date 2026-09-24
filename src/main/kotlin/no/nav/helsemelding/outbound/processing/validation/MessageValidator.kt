@@ -10,38 +10,22 @@ import no.nav.helsemelding.jsonschema.core.validation.ValidationError
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessingError
-import kotlin.uuid.Uuid
 
 private const val SOURCE_SYSTEM_HEADER = "sourceSystem"
 
 data class MessageValidationResult(
-    val recordKey: RecordKeyValidation,
     val recordValue: RecordValueValidation,
     val recordMetadata: RecordMetadataValidation,
     val message: MessageValidation
 )
 
 fun MessageValidationResult.isValid(): Boolean =
-    recordKey.isValid &&
-        recordValue.isValid &&
+    recordValue.isValid &&
         recordMetadata.isValid &&
         message.isValid
 
 fun MessageValidationResult.errors(): List<ProcessingError> =
     buildList {
-        when (val key = recordKey) {
-            is RecordKeyValidation.Invalid ->
-                add(
-                    ProcessingError(
-                        category = ErrorCategory.VALIDATION,
-                        code = ErrorCode.INVALID_KAFKA_KEY,
-                        message = key.reason
-                    )
-                )
-
-            RecordKeyValidation.Valid -> Unit
-        }
-
         when (val value = recordValue) {
             is RecordValueValidation.Invalid ->
                 add(
@@ -86,14 +70,12 @@ class MessageValidator(
     private val schemaValidator: SchemaValidator = JsonSchemaValidator()
 ) {
     fun validate(
-        key: String?,
         value: String?,
         sourceSystem: String?
     ): MessageValidationResult {
         val recordValue = validateRecordValue(value)
 
         return MessageValidationResult(
-            recordKey = validateRecordKey(key),
             recordValue = recordValue,
             recordMetadata = validateRecordMetadata(sourceSystem),
             message = validateMessage(value, recordValue)
@@ -112,35 +94,6 @@ class MessageValidator(
 sealed interface Validation {
     val isValid: Boolean
 }
-
-sealed interface RecordKeyValidation : Validation {
-    data object Valid : RecordKeyValidation {
-        override val isValid = true
-    }
-
-    data class Invalid(
-        val reason: String
-    ) : RecordKeyValidation {
-        override val isValid = false
-    }
-}
-
-internal fun validateRecordKey(
-    key: String?
-): RecordKeyValidation =
-    when {
-        key == null ->
-            RecordKeyValidation.Invalid(
-                "Kafka record key is null"
-            )
-
-        Uuid.parseOrNull(key) == null ->
-            RecordKeyValidation.Invalid(
-                "Kafka record key is not a valid UUID"
-            )
-
-        else -> RecordKeyValidation.Valid
-    }
 
 sealed interface RecordValueValidation : Validation {
     data object Valid : RecordValueValidation {

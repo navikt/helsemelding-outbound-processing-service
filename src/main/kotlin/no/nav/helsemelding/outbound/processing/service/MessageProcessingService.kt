@@ -57,7 +57,6 @@ class MessageProcessingService(
 
     private suspend fun ReceivedMessage.validate(): Either<PublishError, RecordMetadata> {
         val validationResult = messageValidator.validate(
-            key = key,
             value = payload,
             sourceSystem = sourceSystem
         )
@@ -112,12 +111,9 @@ private fun ReceivedMessage.logReceived() {
     }
 }
 
-private fun ReceivedMessage.validKey(): String =
-    requireNotNull(key) { "Message key must be present after validation" }
-
 private fun ReceivedMessage.toProcessedMessage(xmlPayload: String): ProcessedMessage =
     ProcessedMessage(
-        key = validKey(),
+        key = key.orEmpty(),
         payload = xmlPayload
     )
 

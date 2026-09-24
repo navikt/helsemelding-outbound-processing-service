@@ -122,8 +122,8 @@ private fun errorMessage(): ErrorMessage =
         errors = listOf(
             ProcessingError(
                 category = ErrorCategory.VALIDATION,
-                code = ErrorCode.INVALID_KAFKA_KEY,
-                message = "Invalid key"
+                code = ErrorCode.INVALID_KAFKA_VALUE,
+                message = "Invalid value"
             )
         ),
         originalMessage = OriginalMessage(

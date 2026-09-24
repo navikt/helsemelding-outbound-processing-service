@@ -56,7 +56,6 @@ class MessageProcessingServiceSpec : StringSpec(
             errorMessage.originalMessage.key shouldBe ""
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors.map { it.code } shouldContainExactly listOf(
-                ErrorCode.INVALID_KAFKA_KEY,
                 ErrorCode.INVALID_KAFKA_VALUE,
                 ErrorCode.MISSING_SOURCE_SYSTEM_HEADER
             )
