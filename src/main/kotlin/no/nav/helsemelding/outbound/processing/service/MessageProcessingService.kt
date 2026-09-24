@@ -8,6 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import no.nav.helsemelding.messageconverter.error.ConversionError
+import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
@@ -38,7 +40,8 @@ class MessageProcessingService(
     private val messagePublisher: MessagePublisher,
     private val messageValidator: MessageValidator,
     private val outgoingMessageConverter: OutgoingMessageConverter,
-    private val payloadSigningClient: PayloadSigningClient
+    private val payloadSigningClient: PayloadSigningClient,
+    private val outgoingDialogMessageSerializer: OutgoingDialogMessageSerializer = OutgoingDialogMessageSerializer()
 ) {
     fun processMessages(scope: CoroutineScope): Job =
         messageReceiver
@@ -62,10 +65,23 @@ class MessageProcessingService(
         )
 
         return when (validationResult.isValid()) {
-            true -> convertToXml()
+            true -> extractMessageId()
             false -> publishErrorMessage(validationResult)
         }
     }
+
+    private suspend fun ReceivedMessage.extractMessageId(): Either<PublishError, RecordMetadata> =
+        when (val result = outgoingDialogMessageSerializer.deserialize(payload)) {
+            is Left ->
+                messagePublisher.publish(
+                    toErrorMessage(
+                        listOf(
+                            result.value.toProcessingError()
+                        )
+                    )
+                )
+            is Right -> copy(messageId = result.value.id.toString()).convertToXml()
+        }
 
     private suspend fun ReceivedMessage.publishErrorMessage(
         validation: MessageValidationResult
@@ -133,6 +149,13 @@ private fun OutgoingMessageError.toProcessingError(): ProcessingError =
     ProcessingError(
         category = ErrorCategory.CONVERSION,
         code = code,
+        message = message
+    )
+
+private fun ConversionError.toProcessingError(): ProcessingError =
+    ProcessingError(
+        category = ErrorCategory.CONVERSION,
+        code = ErrorCode.MESSAGE_ID_EXTRACTION_ERROR,
         message = message
     )
 

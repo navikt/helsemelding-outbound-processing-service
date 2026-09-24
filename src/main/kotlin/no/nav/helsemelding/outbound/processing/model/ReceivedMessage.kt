@@ -3,6 +3,7 @@ package no.nav.helsemelding.outbound.processing.model
 import kotlin.time.Instant
 
 data class ReceivedMessage(
+    val messageId: String? = null,
     val key: String?,
     val payload: String,
     val sourceSystem: String?,

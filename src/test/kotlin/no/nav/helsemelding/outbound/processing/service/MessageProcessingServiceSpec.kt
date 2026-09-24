@@ -1,15 +1,18 @@
 package no.nav.helsemelding.outbound.processing.service
 
 import arrow.core.Either
+import arrow.core.getOrElse
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
+import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.client.pdl.model.GraphQlError
 import no.nav.helsemelding.outbound.processing.conversion.FakeOutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
+import no.nav.helsemelding.outbound.processing.conversion.outgoingDialogMessage
 import no.nav.helsemelding.outbound.processing.model.ErrorCategory
 import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
@@ -177,6 +180,36 @@ class MessageProcessingServiceSpec : StringSpec(
             acknowledgement.acknowledged shouldBe true
         }
 
+        "should publish conversion error when message id extraction fails" {
+            val acknowledgement = Acknowledgement()
+            val message = receivedMessage(
+                payload = """{"not":"a valid outgoing dialog message"}""",
+                acknowledge = acknowledgement::acknowledge
+            )
+            val receiver = FakeMessageReceiver(message)
+            val publisher = FakeMessagePublisher()
+            val converter = FakeOutgoingMessageConverter()
+
+            val service = messageProcessingService(
+                receiver = receiver,
+                publisher = publisher,
+                converter = converter,
+                schemaValidator = FakeSchemaValidator()
+            )
+
+            service.processMessage(message)
+
+            val errorMessage = publisher.errorMessages.single()
+            errorMessage.sourceSystem shouldBe message.sourceSystem
+            errorMessage.originalMessage.key shouldBe message.key
+            errorMessage.originalMessage.payload shouldBe message.payload
+            errorMessage.errors.single().category shouldBe ErrorCategory.CONVERSION
+            errorMessage.errors.single().code shouldBe ErrorCode.MESSAGE_ID_EXTRACTION_ERROR
+            publisher.processedMessages shouldBe emptyList()
+            converter.payloads shouldBe emptyList()
+            acknowledgement.acknowledged shouldBe true
+        }
+
         "should not acknowledge message when publishing fails" {
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
@@ -231,7 +264,7 @@ private fun messageProcessingService(
 
 private fun receivedMessage(
     key: String? = Uuid.random().toString(),
-    payload: String = """{"message":"valid"}""",
+    payload: String = validDialogMessageJson(),
     sourceSystem: String? = "test-system",
     acknowledge: suspend () -> Unit = {}
 ): ReceivedMessage =
@@ -245,6 +278,11 @@ private fun receivedMessage(
         offset = 0,
         acknowledge = acknowledge
     )
+
+private fun validDialogMessageJson(): String =
+    OutgoingDialogMessageSerializer()
+        .serialize(outgoingDialogMessage())
+        .getOrElse { error("Could not serialize test OutgoingDialogMessage: ${it.message}") }
 
 private class Acknowledgement {
     var acknowledged = false
