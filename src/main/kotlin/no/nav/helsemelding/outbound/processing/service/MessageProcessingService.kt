@@ -80,7 +80,10 @@ class MessageProcessingService(
                         )
                     )
                 )
-            is Right -> copy(messageId = result.value.id.toString()).convertToXml()
+            is Right -> {
+                val messageWithId = this.copy(messageId = result.value.id)
+                messageWithId.convertToXml()
+            }
         }
 
     private suspend fun ReceivedMessage.publishErrorMessage(
@@ -129,7 +132,7 @@ private fun ReceivedMessage.logReceived() {
 
 private fun ReceivedMessage.toProcessedMessage(xmlPayload: String): ProcessedMessage =
     ProcessedMessage(
-        key = key.orEmpty(),
+        key = messageId.toString(),
         payload = xmlPayload
     )
 
@@ -140,7 +143,7 @@ private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): Error
         errors = errors,
         originalMessage = OriginalMessage(
             createdAt = createdAt,
-            key = key.orEmpty(),
+            key = messageId.toString(),
             payload = payload
         )
     )

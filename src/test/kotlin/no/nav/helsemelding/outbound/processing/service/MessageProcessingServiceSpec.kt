@@ -5,6 +5,7 @@ import arrow.core.getOrElse
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
+import no.nav.helsemelding.jsonschema.core.model.OutgoingDialogMessage
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
 import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.outbound.processing.PublishError
@@ -56,7 +57,7 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe "UNKNOWN"
-            errorMessage.originalMessage.key shouldBe ""
+            errorMessage.originalMessage.key shouldBe "null"
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors.map { it.code } shouldContainExactly listOf(
                 ErrorCode.INVALID_KAFKA_VALUE,
@@ -68,10 +69,10 @@ class MessageProcessingServiceSpec : StringSpec(
         }
 
         "should convert, sign and publish a message when it is valid" {
-            val key = Uuid.random().toString()
+            val dialogMessage = outgoingDialogMessage()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
-                key = key,
+                payload = dialogMessagePayload(dialogMessage),
                 acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
@@ -94,7 +95,7 @@ class MessageProcessingServiceSpec : StringSpec(
             service.processMessage(message)
 
             publisher.processedMessages.single() shouldBe ProcessedMessage(
-                key = key,
+                key = dialogMessage.id.toString(),
                 payload = signedXml
             )
             payloadSigningClient.requests.single().direction shouldBe Direction.OUT
@@ -142,8 +143,10 @@ class MessageProcessingServiceSpec : StringSpec(
         }
 
         "should publish conversion error when conversion fails" {
+            val dialogMessage = outgoingDialogMessage()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
+                payload = dialogMessagePayload(dialogMessage),
                 acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
@@ -172,7 +175,7 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.key shouldBe message.key
+            errorMessage.originalMessage.key shouldBe dialogMessage.id.toString()
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors shouldContainExactly listOf(processingError)
             publisher.processedMessages shouldBe emptyList()
@@ -201,7 +204,7 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.key shouldBe message.key
+            errorMessage.originalMessage.key shouldBe "null"
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors.single().category shouldBe ErrorCategory.CONVERSION
             errorMessage.errors.single().code shouldBe ErrorCode.MESSAGE_ID_EXTRACTION_ERROR
@@ -211,8 +214,10 @@ class MessageProcessingServiceSpec : StringSpec(
         }
 
         "should not acknowledge message when publishing fails" {
+            val dialogMessage = outgoingDialogMessage()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
+                payload = dialogMessagePayload(dialogMessage),
                 acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
@@ -237,7 +242,7 @@ class MessageProcessingServiceSpec : StringSpec(
 
             publisher.processedMessages shouldContainExactly listOf(
                 ProcessedMessage(
-                    key = message.key.orEmpty(),
+                    key = dialogMessage.id.toString(),
                     payload = "<xml />"
                 )
             )
@@ -264,7 +269,7 @@ private fun messageProcessingService(
 
 private fun receivedMessage(
     key: String? = Uuid.random().toString(),
-    payload: String = validDialogMessageJson(),
+    payload: String = dialogMessagePayload(),
     sourceSystem: String? = "test-system",
     acknowledge: suspend () -> Unit = {}
 ): ReceivedMessage =
@@ -279,9 +284,9 @@ private fun receivedMessage(
         acknowledge = acknowledge
     )
 
-private fun validDialogMessageJson(): String =
+private fun dialogMessagePayload(dialogMessage: OutgoingDialogMessage = outgoingDialogMessage()): String =
     OutgoingDialogMessageSerializer()
-        .serialize(outgoingDialogMessage())
+        .serialize(dialogMessage)
         .getOrElse { error("Could not serialize test OutgoingDialogMessage: ${it.message}") }
 
 private class Acknowledgement {

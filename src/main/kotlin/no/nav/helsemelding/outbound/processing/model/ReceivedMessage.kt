@@ -1,9 +1,10 @@
 package no.nav.helsemelding.outbound.processing.model
 
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 data class ReceivedMessage(
-    val messageId: String? = null,
+    val messageId: Uuid? = null,
     val key: String?,
     val payload: String,
     val sourceSystem: String?,
