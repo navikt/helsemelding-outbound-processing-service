@@ -71,10 +71,10 @@ private fun OutgoingDialogMessage.providerUuid(): Either<OutgoingMessageError, U
 
 class FakeAdditionalMessageInfoResolver : AdditionalMessageInfoResolver {
     private val additionalMessageInfoByMessageId =
-        mutableMapOf<String, Either<OutgoingMessageError, AdditionalMessageInfo>>()
+        mutableMapOf<Uuid, Either<OutgoingMessageError, AdditionalMessageInfo>>()
 
     fun givenAdditionalMessageInfo(
-        messageId: String,
+        messageId: Uuid,
         either: Either<OutgoingMessageError, AdditionalMessageInfo>
     ) {
         additionalMessageInfoByMessageId[messageId] = either

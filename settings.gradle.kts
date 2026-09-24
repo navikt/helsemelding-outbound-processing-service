@@ -26,7 +26,7 @@ dependencyResolutionManagement {
             version("logstash", "7.4")
             version("opentelemetry-mdc", "2.24.0-alpha")
             version("opentelemetry-extension-kotlin", "1.58.0")
-            version("message-converter", "0.0.4")
+            version("message-converter", "0.0.9")
             version("payload-signing-client", "0.0.2")
 
             library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")

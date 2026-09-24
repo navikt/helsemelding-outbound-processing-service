@@ -167,7 +167,7 @@ fun outgoingDialogMessage(
     providerId: Uuid = Uuid.random()
 ) = OutgoingDialogMessage(
     version = 1,
-    id = Uuid.random().toString(),
+    id = Uuid.random(),
     patientIdent = patientIdent.value,
     providerId = providerId.toString(),
     conversationReference = ConversationReference(
