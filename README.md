@@ -20,6 +20,8 @@ MessageProcessingService
 
 The XML topic is consumed by `helsemelding-outbound-message-service`, which forwards messages to the NHN Messages API.
 
+Successfully converted XML messages are published with `OutgoingDialogMessage.id` as the Kafka key. Error messages are published without a Kafka key.
+
 ## Validation
 
 The service validates:
@@ -55,7 +57,6 @@ Example error message:
   ],
   "originalMessage": {
     "createdAt": "2026-05-21T12:15:41.901Z",
-    "key": "null",
     "payload": "{\"hello\":\"world\"}"
   }
 }
@@ -69,5 +70,7 @@ Error codes:
 - `MISSING_SOURCE_SYSTEM_HEADER`
 - `INVALID_MESSAGE`
 - `CONVERSION_ERROR`
+- `MESSAGE_ID_EXTRACTION_ERROR`
 - `PDL_ERROR`
 - `PROVIDER_REGISTRY_ERROR`
+- `SIGNING_ERROR`
