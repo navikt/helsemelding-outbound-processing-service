@@ -30,7 +30,7 @@ class MessageReceiverSpec : KafkaSpec(
                 }
         }
 
-        "should receive message with key, payload, source system and metadata" {
+        "should receive message with payload, source system and metadata" {
             resourceScope {
                 turbineScope {
                     val publisher = install({ KafkaPublisher(publisherSettings()) }) { p, _ -> p.close() }
@@ -57,7 +57,6 @@ class MessageReceiverSpec : KafkaSpec(
 
                     messages.test {
                         val message = awaitItem()
-                        message.key shouldBe key.toString()
                         message.payload shouldBe content
                         message.sourceSystem shouldBe sourceSystem
                         message.topic shouldBe topic
@@ -92,7 +91,6 @@ class MessageReceiverSpec : KafkaSpec(
 
                     receiver.receiveMessages().test {
                         val message = awaitItem()
-                        message.key shouldBe key.toString()
                         message.payload shouldBe content
                         message.sourceSystem shouldBe null
                         message.topic shouldBe topic
@@ -125,7 +123,6 @@ class MessageReceiverSpec : KafkaSpec(
 
                     receiver.receiveMessages().test {
                         val message = awaitItem()
-                        message.key shouldBe null
                         message.payload shouldBe content
                         message.topic shouldBe topic
                         message.partition shouldBe 0

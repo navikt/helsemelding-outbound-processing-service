@@ -6,6 +6,5 @@ import kotlin.time.Instant
 @Serializable
 data class OriginalMessage(
     val createdAt: Instant,
-    val key: String,
     val payload: String
 )

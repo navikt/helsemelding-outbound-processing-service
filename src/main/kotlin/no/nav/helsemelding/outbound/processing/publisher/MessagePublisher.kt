@@ -30,7 +30,7 @@ class OutboundMessagePublisher(
     override suspend fun publish(errorMessage: ErrorMessage): Either<PublishError, RecordMetadata> =
         publish(
             topic = topics.errorMessage,
-            key = errorMessage.originalMessage.key,
+            key = null,
             payload = json.encodeToString(errorMessage)
         )
 
@@ -43,7 +43,7 @@ class OutboundMessagePublisher(
 
     private suspend fun publish(
         topic: String,
-        key: String,
+        key: String?,
         payload: String
     ): Either<PublishError, RecordMetadata> =
         kafkaPublisher.publishScope {
@@ -65,7 +65,7 @@ class OutboundMessagePublisher(
             }
 }
 
-private fun RecordMetadata.logPublished(topic: String, key: String) {
+private fun RecordMetadata.logPublished(topic: String, key: String?) {
     log.info {
         "Published message: key=$key topic=$topic partition=${partition()} offset=${offset()}"
     }
