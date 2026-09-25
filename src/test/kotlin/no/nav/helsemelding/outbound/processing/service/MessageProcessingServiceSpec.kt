@@ -55,7 +55,6 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe "UNKNOWN"
-            errorMessage.originalMessage.key shouldBe "null"
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors.map { it.code } shouldContainExactly listOf(
                 ErrorCode.INVALID_KAFKA_VALUE,
@@ -173,7 +172,6 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.key shouldBe dialogMessage.id.toString()
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors shouldContainExactly listOf(processingError)
             publisher.processedMessages shouldBe emptyList()
@@ -202,7 +200,6 @@ class MessageProcessingServiceSpec : StringSpec(
 
             val errorMessage = publisher.errorMessages.single()
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.key shouldBe "null"
             errorMessage.originalMessage.payload shouldBe message.payload
             errorMessage.errors.single().category shouldBe ErrorCategory.CONVERSION
             errorMessage.errors.single().code shouldBe ErrorCode.MESSAGE_ID_EXTRACTION_ERROR

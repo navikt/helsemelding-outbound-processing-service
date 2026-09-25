@@ -76,7 +76,7 @@ class MessagePublisherSpec : KafkaSpec(
                     val record = awaitItem()
                     val payload = Json.decodeFromString<ErrorMessage>(record.value().decodeToString())
 
-                    record.key() shouldBe errorMessage.originalMessage.key
+                    record.key() shouldBe null
                     record.topic() shouldBe topics.errorMessage
                     payload shouldBe errorMessage
 
@@ -128,7 +128,6 @@ private fun errorMessage(): ErrorMessage =
         ),
         originalMessage = OriginalMessage(
             createdAt = Clock.System.now(),
-            key = Uuid.random().toString(),
             payload = "original payload"
         )
     )

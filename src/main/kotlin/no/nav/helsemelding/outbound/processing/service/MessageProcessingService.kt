@@ -143,7 +143,6 @@ private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): Error
         errors = errors,
         originalMessage = OriginalMessage(
             createdAt = createdAt,
-            key = messageId.toString(),
             payload = payload
         )
     )
