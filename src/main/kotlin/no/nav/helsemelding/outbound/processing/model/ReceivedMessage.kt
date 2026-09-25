@@ -5,7 +5,6 @@ import kotlin.uuid.Uuid
 
 data class ReceivedMessage(
     val messageId: Uuid? = null,
-    val key: String?,
     val payload: String,
     val sourceSystem: String?,
     val createdAt: Instant,

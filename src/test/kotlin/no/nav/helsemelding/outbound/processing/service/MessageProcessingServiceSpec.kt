@@ -31,14 +31,12 @@ import no.nav.helsemelding.payloadsigning.model.MessageSigningError
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import no.nav.helsemelding.payloadsigning.model.PayloadResponse
 import kotlin.time.Clock
-import kotlin.uuid.Uuid
 
 class MessageProcessingServiceSpec : StringSpec(
     {
         "should publish validation error when received message is invalid" {
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
-                key = null,
                 payload = "",
                 sourceSystem = null,
                 acknowledge = acknowledgement::acknowledge
@@ -222,7 +220,7 @@ class MessageProcessingServiceSpec : StringSpec(
             )
             val receiver = FakeMessageReceiver(message)
             val publishError = PublishError.Failure(
-                key = message.key.orEmpty(),
+                key = dialogMessage.id.toString(),
                 topic = message.topic,
                 cause = RuntimeException("Publish failed")
             )
@@ -268,13 +266,11 @@ private fun messageProcessingService(
     )
 
 private fun receivedMessage(
-    key: String? = Uuid.random().toString(),
     payload: String = dialogMessagePayload(),
     sourceSystem: String? = "test-system",
     acknowledge: suspend () -> Unit = {}
 ): ReceivedMessage =
     ReceivedMessage(
-        key = key,
         payload = payload,
         sourceSystem = sourceSystem,
         createdAt = Clock.System.now(),

@@ -126,7 +126,7 @@ class MessageProcessingService(
 
 private fun ReceivedMessage.logReceived() {
     log.info {
-        "Received message: key=$key topic=$topic partition=$partition offset=$offset"
+        "Received message: topic=$topic partition=$partition offset=$offset"
     }
 }
 
