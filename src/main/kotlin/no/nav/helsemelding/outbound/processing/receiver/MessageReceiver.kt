@@ -25,7 +25,6 @@ class OutboundMessageReceiver(
 
     private fun toMessage(record: ReceiverRecord<String, ByteArray>): ReceivedMessage =
         ReceivedMessage(
-            key = record.key(),
             payload = record.value().decodeToString(),
             sourceSystem = record.headers()
                 .lastHeader(SOURCE_SYSTEM_HEADER)

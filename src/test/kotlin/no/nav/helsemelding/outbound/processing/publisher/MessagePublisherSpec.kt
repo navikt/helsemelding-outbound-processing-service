@@ -76,7 +76,7 @@ class MessagePublisherSpec : KafkaSpec(
                     val record = awaitItem()
                     val payload = Json.decodeFromString<ErrorMessage>(record.value().decodeToString())
 
-                    record.key() shouldBe errorMessage.originalMessage.key
+                    record.key() shouldBe null
                     record.topic() shouldBe topics.errorMessage
                     payload shouldBe errorMessage
 
@@ -122,13 +122,12 @@ private fun errorMessage(): ErrorMessage =
         errors = listOf(
             ProcessingError(
                 category = ErrorCategory.VALIDATION,
-                code = ErrorCode.INVALID_KAFKA_KEY,
-                message = "Invalid key"
+                code = ErrorCode.INVALID_KAFKA_VALUE,
+                message = "Invalid value"
             )
         ),
         originalMessage = OriginalMessage(
             createdAt = Clock.System.now(),
-            key = Uuid.random().toString(),
             payload = "original payload"
         )
     )
