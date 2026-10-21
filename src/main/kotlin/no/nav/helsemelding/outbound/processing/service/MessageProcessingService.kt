@@ -31,7 +31,7 @@ import no.nav.helsemelding.payloadsigning.model.Direction.OUT
 import no.nav.helsemelding.payloadsigning.model.MessageSigningError
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import org.apache.kafka.clients.producer.RecordMetadata
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Clock
 
 private val log = KotlinLogging.logger {}
 
@@ -141,7 +141,7 @@ private fun ReceivedMessage.toProcessedMessage(xmlPayload: String): ProcessedMes
 private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): ErrorMessage =
     ErrorMessage(
         version = 1,
-        processedAt = createdAt.plus(5.minutes),
+        processedAt = Clock.System.now(),
         sourceSystem = sourceSystem ?: "UNKNOWN",
         messageId = messageId,
         errors = errors,
