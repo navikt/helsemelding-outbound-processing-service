@@ -33,6 +33,7 @@ import no.nav.helsemelding.payloadsigning.model.MessageSigningError
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import no.nav.helsemelding.payloadsigning.model.PayloadResponse
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 class MessageProcessingServiceSpec : StringSpec(
     {
@@ -301,7 +302,7 @@ private fun receivedMessage(
     ReceivedMessage(
         payload = payload,
         sourceSystem = sourceSystem,
-        createdAt = Clock.System.now(),
+        createdAt = Clock.System.now().minus(5.minutes),
         topic = "topic",
         partition = 0,
         offset = 0,
