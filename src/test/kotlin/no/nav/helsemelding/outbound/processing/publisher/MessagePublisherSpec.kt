@@ -9,15 +9,15 @@ import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
+import no.nav.helsemelding.jsonschema.core.model.ErrorCategory
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
+import no.nav.helsemelding.jsonschema.core.model.ErrorMessage
+import no.nav.helsemelding.jsonschema.core.model.OriginalMessage
+import no.nav.helsemelding.jsonschema.core.model.ProcessingError
 import no.nav.helsemelding.outbound.processing.KafkaSpec
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.config.Kafka
-import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
-import no.nav.helsemelding.outbound.processing.model.ErrorMessage
-import no.nav.helsemelding.outbound.processing.model.OriginalMessage
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
-import no.nav.helsemelding.outbound.processing.model.ProcessingError
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.Metric
 import org.apache.kafka.common.MetricName
@@ -117,8 +117,10 @@ private fun testTopics(): Kafka.Topics =
 
 private fun errorMessage(): ErrorMessage =
     ErrorMessage(
+        version = 1,
         processedAt = Clock.System.now(),
         sourceSystem = "test-system",
+        messageId = Uuid.random(),
         errors = listOf(
             ProcessingError(
                 category = ErrorCategory.VALIDATION,
@@ -127,7 +129,7 @@ private fun errorMessage(): ErrorMessage =
             )
         ),
         originalMessage = OriginalMessage(
-            createdAt = Clock.System.now(),
+            publishedAt = Clock.System.now(),
             payload = "original payload"
         )
     )

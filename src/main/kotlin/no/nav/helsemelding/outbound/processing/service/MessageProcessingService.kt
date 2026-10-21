@@ -8,17 +8,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import no.nav.helsemelding.jsonschema.core.model.ErrorCategory
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
+import no.nav.helsemelding.jsonschema.core.model.ErrorMessage
+import no.nav.helsemelding.jsonschema.core.model.OriginalMessage
+import no.nav.helsemelding.jsonschema.core.model.ProcessingError
 import no.nav.helsemelding.messageconverter.error.ConversionError
 import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
-import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
-import no.nav.helsemelding.outbound.processing.model.ErrorMessage
-import no.nav.helsemelding.outbound.processing.model.OriginalMessage
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
-import no.nav.helsemelding.outbound.processing.model.ProcessingError
 import no.nav.helsemelding.outbound.processing.model.ReceivedMessage
 import no.nav.helsemelding.outbound.processing.publisher.MessagePublisher
 import no.nav.helsemelding.outbound.processing.receiver.MessageReceiver
@@ -31,7 +31,7 @@ import no.nav.helsemelding.payloadsigning.model.Direction.OUT
 import no.nav.helsemelding.payloadsigning.model.MessageSigningError
 import no.nav.helsemelding.payloadsigning.model.PayloadRequest
 import org.apache.kafka.clients.producer.RecordMetadata
-import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 private val log = KotlinLogging.logger {}
 
@@ -80,6 +80,7 @@ class MessageProcessingService(
                         )
                     )
                 )
+
             is Right -> {
                 val messageWithId = this.copy(messageId = result.value.id)
                 messageWithId.convertToXml()
@@ -103,6 +104,7 @@ class MessageProcessingService(
                         )
                     )
                 )
+
             is Right -> sign(result.value)
         }
 
@@ -138,11 +140,13 @@ private fun ReceivedMessage.toProcessedMessage(xmlPayload: String): ProcessedMes
 
 private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): ErrorMessage =
     ErrorMessage(
-        processedAt = Clock.System.now(),
+        version = 1,
+        processedAt = createdAt.plus(5.minutes),
         sourceSystem = sourceSystem ?: "UNKNOWN",
+        messageId = messageId,
         errors = errors,
         originalMessage = OriginalMessage(
-            createdAt = createdAt,
+            publishedAt = createdAt,
             payload = payload
         )
     )

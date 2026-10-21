@@ -24,6 +24,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
 import no.nav.helsemelding.outbound.processing.client.auth.AccessTokenProvider
 import no.nav.helsemelding.outbound.processing.client.pdl.model.ErrorExtension
@@ -37,7 +38,6 @@ import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonNotFound
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonRequest
 import no.nav.helsemelding.outbound.processing.client.pdl.model.PersonResponse
 import no.nav.helsemelding.outbound.processing.client.pdl.model.UnexpectedError
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
 
 private const val PROCESSING_NUMBER_HEADER_KEY = "Behandlingsnummer"
 private const val PROCESSING_NUMBER_HEADER_VALUE = "B123"

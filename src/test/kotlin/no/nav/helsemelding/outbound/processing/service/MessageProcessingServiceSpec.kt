@@ -4,8 +4,13 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.comparables.shouldBeGreaterThan
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import no.nav.helsemelding.jsonschema.core.model.ErrorCategory
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
 import no.nav.helsemelding.jsonschema.core.model.OutgoingDialogMessage
+import no.nav.helsemelding.jsonschema.core.model.ProcessingError
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
 import no.nav.helsemelding.messageconverter.json.OutgoingDialogMessageSerializer
 import no.nav.helsemelding.outbound.processing.PublishError
@@ -14,10 +19,7 @@ import no.nav.helsemelding.outbound.processing.conversion.FakeOutgoingMessageCon
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageConverter
 import no.nav.helsemelding.outbound.processing.conversion.OutgoingMessageError
 import no.nav.helsemelding.outbound.processing.conversion.outgoingDialogMessage
-import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
-import no.nav.helsemelding.outbound.processing.model.ProcessingError
 import no.nav.helsemelding.outbound.processing.model.ReceivedMessage
 import no.nav.helsemelding.outbound.processing.publisher.FakeMessagePublisher
 import no.nav.helsemelding.outbound.processing.publisher.MessagePublisher
@@ -54,8 +56,14 @@ class MessageProcessingServiceSpec : StringSpec(
             service.processMessage(message)
 
             val errorMessage = publisher.errorMessages.single()
+            errorMessage.version shouldBe 1
+            errorMessage.processedAt shouldBeGreaterThan message.createdAt
             errorMessage.sourceSystem shouldBe "UNKNOWN"
-            errorMessage.originalMessage.payload shouldBe message.payload
+            errorMessage.messageId shouldBe message.messageId
+            errorMessage.originalMessage shouldNotBeNull {
+                publishedAt shouldBe message.createdAt
+                payload shouldBe message.payload
+            }
             errorMessage.errors.map { it.code } shouldContainExactly listOf(
                 ErrorCode.INVALID_KAFKA_VALUE,
                 ErrorCode.MISSING_SOURCE_SYSTEM_HEADER
@@ -103,8 +111,10 @@ class MessageProcessingServiceSpec : StringSpec(
         }
 
         "should publish signing error when payload signing fails" {
+            val dialogMessage = outgoingDialogMessage()
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
+                payload = dialogMessagePayload(dialogMessage),
                 acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
@@ -129,7 +139,16 @@ class MessageProcessingServiceSpec : StringSpec(
             service.processMessage(message)
 
             publisher.processedMessages shouldBe emptyList()
-            publisher.errorMessages.single().errors shouldContainExactly listOf(
+            val errorMessage = publisher.errorMessages.single()
+            errorMessage.version shouldBe 1
+            errorMessage.processedAt shouldBeGreaterThan message.createdAt
+            errorMessage.sourceSystem shouldBe message.sourceSystem
+            errorMessage.messageId shouldBe dialogMessage.id
+            errorMessage.originalMessage shouldNotBeNull {
+                publishedAt shouldBe message.createdAt
+                payload shouldBe message.payload
+            }
+            errorMessage.errors shouldContainExactly listOf(
                 ProcessingError(
                     category = ErrorCategory.SIGNING,
                     code = ErrorCode.SIGNING_ERROR,
@@ -171,8 +190,14 @@ class MessageProcessingServiceSpec : StringSpec(
             service.processMessage(message)
 
             val errorMessage = publisher.errorMessages.single()
+            errorMessage.version shouldBe 1
+            errorMessage.processedAt shouldBeGreaterThan message.createdAt
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.payload shouldBe message.payload
+            errorMessage.messageId shouldBe dialogMessage.id
+            errorMessage.originalMessage shouldNotBeNull {
+                publishedAt shouldBe message.createdAt
+                payload shouldBe message.payload
+            }
             errorMessage.errors shouldContainExactly listOf(processingError)
             publisher.processedMessages shouldBe emptyList()
             converter.payloads shouldContainExactly listOf(message.payload)
@@ -199,8 +224,14 @@ class MessageProcessingServiceSpec : StringSpec(
             service.processMessage(message)
 
             val errorMessage = publisher.errorMessages.single()
+            errorMessage.version shouldBe 1
+            errorMessage.processedAt shouldBeGreaterThan message.createdAt
             errorMessage.sourceSystem shouldBe message.sourceSystem
-            errorMessage.originalMessage.payload shouldBe message.payload
+            errorMessage.messageId shouldBe message.messageId
+            errorMessage.originalMessage shouldNotBeNull {
+                publishedAt shouldBe message.createdAt
+                payload shouldBe message.payload
+            }
             errorMessage.errors.single().category shouldBe ErrorCategory.CONVERSION
             errorMessage.errors.single().code shouldBe ErrorCode.MESSAGE_ID_EXTRACTION_ERROR
             publisher.processedMessages shouldBe emptyList()

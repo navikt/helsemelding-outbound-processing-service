@@ -2,9 +2,10 @@ package no.nav.helsemelding.outbound.processing.validation
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
-import no.nav.helsemelding.outbound.processing.model.ProcessingError
+import no.nav.helsemelding.jsonschema.core.model.ErrorCategory
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
+import no.nav.helsemelding.jsonschema.core.model.ProcessingError
+import kotlin.collections.map
 
 class MessageValidatorSpec : StringSpec(
     {

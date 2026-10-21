@@ -3,13 +3,13 @@ package no.nav.helsemelding.outbound.processing.validation
 import arrow.core.Either
 import arrow.core.Either.Left
 import arrow.core.Either.Right
+import no.nav.helsemelding.jsonschema.core.model.ErrorCategory
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
+import no.nav.helsemelding.jsonschema.core.model.ProcessingError
 import no.nav.helsemelding.jsonschema.core.model.SchemaType
 import no.nav.helsemelding.jsonschema.core.validation.JsonSchemaValidator
 import no.nav.helsemelding.jsonschema.core.validation.SchemaValidator
 import no.nav.helsemelding.jsonschema.core.validation.ValidationError
-import no.nav.helsemelding.outbound.processing.model.ErrorCategory
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
-import no.nav.helsemelding.outbound.processing.model.ProcessingError
 
 private const val SOURCE_SYSTEM_HEADER = "sourceSystem"
 
