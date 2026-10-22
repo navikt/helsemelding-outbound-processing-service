@@ -8,6 +8,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.equality.shouldBeEqualUsingFields
 import io.kotest.matchers.shouldBe
 import no.nav.helsemelding.jsonschema.core.model.ConversationReference
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
 import no.nav.helsemelding.jsonschema.core.model.OutgoingDialogMessage
 import no.nav.helsemelding.jsonschema.core.model.OutgoingDialogMessageType
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
@@ -18,7 +19,6 @@ import no.nav.helsemelding.outbound.processing.client.providerregistry.FakeProvi
 import no.nav.helsemelding.outbound.processing.client.providerregistry.ProviderRegistryClient
 import no.nav.helsemelding.outbound.processing.client.providerregistry.createProvider
 import no.nav.helsemelding.outbound.processing.config.ProviderHerIdOverride
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import kotlin.uuid.Uuid
 
 class AdditionalMessageInfoResolverSpec : StringSpec(

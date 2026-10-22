@@ -1,7 +1,7 @@
 package no.nav.helsemelding.outbound.processing.client.pdl.model
 
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode.PDL_ERROR
 import no.nav.helsemelding.outbound.processing.client.ClientError
-import no.nav.helsemelding.outbound.processing.model.ErrorCode.PDL_ERROR
 
 sealed interface PdlError : ClientError {
     override val code get() = PDL_ERROR

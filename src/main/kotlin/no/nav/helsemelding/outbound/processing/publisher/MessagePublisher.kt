@@ -5,9 +5,9 @@ import arrow.core.Either.Right
 import io.github.nomisRev.kafka.publisher.KafkaPublisher
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.Json
+import no.nav.helsemelding.jsonschema.core.model.ErrorMessage
 import no.nav.helsemelding.outbound.processing.PublishError
 import no.nav.helsemelding.outbound.processing.config.Kafka
-import no.nav.helsemelding.outbound.processing.model.ErrorMessage
 import no.nav.helsemelding.outbound.processing.model.ProcessedMessage
 import no.nav.helsemelding.outbound.processing.util.toEither
 import org.apache.kafka.clients.producer.ProducerRecord

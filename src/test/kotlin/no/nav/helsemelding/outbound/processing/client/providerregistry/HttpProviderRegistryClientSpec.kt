@@ -21,6 +21,7 @@ import io.ktor.http.fullPath
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import no.nav.helsemelding.jsonschema.core.model.ErrorCode
 import no.nav.helsemelding.messageconverter.msghead.model.Personident
 import no.nav.helsemelding.messageconverter.msghead.model.provider.OrganisationNumber
 import no.nav.helsemelding.messageconverter.msghead.model.provider.Provider
@@ -28,7 +29,6 @@ import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderCateg
 import no.nav.helsemelding.messageconverter.msghead.model.provider.ProviderOffice
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.HttpError
 import no.nav.helsemelding.outbound.processing.client.providerregistry.model.UnexpectedError
-import no.nav.helsemelding.outbound.processing.model.ErrorCode
 import java.time.OffsetDateTime
 import kotlin.uuid.Uuid
 
