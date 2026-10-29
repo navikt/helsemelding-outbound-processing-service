@@ -312,7 +312,7 @@ private fun receivedMessage(
 private fun dialogMessagePayload(dialogMessage: OutgoingDialogMessage = outgoingDialogMessage()): String =
     OutgoingDialogMessageSerializer()
         .serialize(dialogMessage)
-        .getOrElse { error("Could not serialize test OutgoingDialogMessage: ${it.message}") }
+        .getOrElse { error("Could not serialize test OutgoingDialogMessage: ${it.message} ") }
 
 private class Acknowledgement {
     var acknowledged = false
