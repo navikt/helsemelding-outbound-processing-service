@@ -30,7 +30,6 @@ class HttpAdditionalMessageInfoResolver(
             val provider = withError(OutgoingMessageError::Client) {
                 providerRegistryClient.getProvider(providerId).bind()
             }
-                .let(providerHerIdOverride::apply)
 
             val patientIdent = withError(OutgoingMessageError::Conversion) {
                 Personident(dialogMessage.patientIdent).bind()

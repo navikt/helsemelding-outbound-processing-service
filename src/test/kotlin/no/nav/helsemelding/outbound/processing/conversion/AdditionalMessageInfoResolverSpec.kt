@@ -52,68 +52,6 @@ class AdditionalMessageInfoResolverSpec : StringSpec(
             info.provider shouldBeEqualUsingFields provider
         }
 
-        "should override provider office her id when configured" {
-            val providerRegistryClient = FakeProviderRegistryClient()
-            val provider = createProvider(providerId)
-            providerRegistryClient.givenProvider(providerId, Either.Right(provider))
-            val pdlClient = FakePdlClient()
-            pdlClient.givenPersonName(
-                patientIdent,
-                Either.Right(
-                    PersonName(
-                        firstName = "Ola",
-                        middleName = "Jens",
-                        lastName = "Nordmann"
-                    )
-                )
-            )
-            val resolver = additionalMessageInfoResolver(
-                pdlClient = pdlClient,
-                providerRegistryClient = providerRegistryClient,
-                providerHerIdOverride = ProviderHerIdOverride(
-                    officeHerId = 654321
-                )
-            )
-
-            val info = resolver.resolve(dialogMessage).shouldBeRight()
-
-            info.provider shouldBeEqualUsingFields provider.copy(
-                office = provider.office.copy(
-                    herId = 654321
-                )
-            )
-        }
-
-        "should override provider her id when configured" {
-            val providerRegistryClient = FakeProviderRegistryClient()
-            val provider = createProvider(providerId)
-            providerRegistryClient.givenProvider(providerId, Either.Right(provider))
-            val pdlClient = FakePdlClient()
-            pdlClient.givenPersonName(
-                patientIdent,
-                Either.Right(
-                    PersonName(
-                        firstName = "Ola",
-                        middleName = "Jens",
-                        lastName = "Nordmann"
-                    )
-                )
-            )
-            val resolver = additionalMessageInfoResolver(
-                pdlClient = pdlClient,
-                providerRegistryClient = providerRegistryClient,
-                providerHerIdOverride = ProviderHerIdOverride(
-                    herId = 123456
-                )
-            )
-
-            val info = resolver.resolve(dialogMessage).shouldBeRight()
-
-            info.provider shouldBeEqualUsingFields provider.copy(
-                herId = 123456
-            )
-        }
-
         "should return provider registry error when provider registry returns error" {
             val providerRegistryClient = FakeProviderRegistryClient()
             val resolver = additionalMessageInfoResolver(
