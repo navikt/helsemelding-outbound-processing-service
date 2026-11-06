@@ -13,6 +13,8 @@ import no.nav.helsemelding.outbound.processing.util.toEither
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.header.Header
+import org.apache.kafka.common.header.internals.RecordHeader
 
 private val log = KotlinLogging.logger {}
 
@@ -38,20 +40,27 @@ class OutboundMessagePublisher(
         publish(
             topic = topics.dialogMessageOutXml,
             key = processedMessage.key,
-            payload = processedMessage.payload
+            payload = processedMessage.payload,
+            headers = listOf(
+                RecordHeader("sourceSystem", processedMessage.sourceSystem.encodeToByteArray())
+            )
         )
 
     private suspend fun publish(
         topic: String,
         key: String?,
-        payload: String
+        payload: String,
+        headers: List<Header> = emptyList()
     ): Either<PublishError, RecordMetadata> =
         kafkaPublisher.publishScope {
             publishCatching(
                 ProducerRecord(
                     topic,
+                    null,
+                    null,
                     key,
-                    payload.encodeToByteArray()
+                    payload.encodeToByteArray(),
+                    headers
                 )
             )
         }

@@ -37,11 +37,13 @@ class MessagePublisherSpec : KafkaSpec(
                 )
                 val key = Uuid.random().toString()
                 val xmlPayload = "<xml />"
+                val sourceSystem = "test-system"
 
                 publisher.publish(
                     ProcessedMessage(
                         key = key,
-                        payload = xmlPayload
+                        payload = xmlPayload,
+                        sourceSystem = sourceSystem
                     )
                 )
                     .shouldBeRight()
@@ -53,6 +55,8 @@ class MessagePublisherSpec : KafkaSpec(
                         record.key() shouldBe key
                         record.value().decodeToString() shouldBe xmlPayload
                         record.topic() shouldBe topics.dialogMessageOutXml
+                        record.headers().headers("sourceSystem").map { it.value().decodeToString() } shouldBe
+                            listOf(sourceSystem)
 
                         cancelAndIgnoreRemainingEvents()
                     }
@@ -78,6 +82,7 @@ class MessagePublisherSpec : KafkaSpec(
 
                     record.key() shouldBe null
                     record.topic() shouldBe topics.errorMessage
+                    record.headers().lastHeader("sourceSystem") shouldBe null
                     payload shouldBe errorMessage
 
                     cancelAndIgnoreRemainingEvents()
@@ -94,7 +99,8 @@ class MessagePublisherSpec : KafkaSpec(
             )
             val processedMessage = ProcessedMessage(
                 key = Uuid.random().toString(),
-                payload = "<xml />"
+                payload = "<xml />",
+                sourceSystem = "test-system"
             )
 
             val error = publisher.publish(processedMessage).shouldBeLeft()

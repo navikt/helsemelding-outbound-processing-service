@@ -79,6 +79,7 @@ class MessageProcessingServiceSpec : StringSpec(
             val acknowledgement = Acknowledgement()
             val message = receivedMessage(
                 payload = dialogMessagePayload(dialogMessage),
+                sourceSystem = "test-system",
                 acknowledge = acknowledgement::acknowledge
             )
             val receiver = FakeMessageReceiver(message)
@@ -102,7 +103,8 @@ class MessageProcessingServiceSpec : StringSpec(
 
             publisher.processedMessages.single() shouldBe ProcessedMessage(
                 key = dialogMessage.id.toString(),
-                payload = signedXml
+                payload = signedXml,
+                sourceSystem = "test-system"
             )
             payloadSigningClient.requests.single().direction shouldBe Direction.OUT
             payloadSigningClient.requests.single().bytes.decodeToString() shouldBe unsignedXml
@@ -270,7 +272,8 @@ class MessageProcessingServiceSpec : StringSpec(
             publisher.processedMessages shouldContainExactly listOf(
                 ProcessedMessage(
                     key = dialogMessage.id.toString(),
-                    payload = "<xml />"
+                    payload = "<xml />",
+                    sourceSystem = message.sourceSystem!!
                 )
             )
             publisher.errorMessages shouldBe emptyList()

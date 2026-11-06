@@ -22,6 +22,9 @@ The XML topic is consumed by `helsemelding-outbound-message-service`, which forw
 
 Successfully converted XML messages are published with `OutgoingDialogMessage.id` as the Kafka key. Error messages are published without a Kafka key.
 
+The incoming `sourceSystem` Kafka header is forwarded unchanged to the XML topic. 
+On the error topic, the source system is included in the JSON payload, not as a Kafka header.
+
 ## Validation
 
 The service validates:

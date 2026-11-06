@@ -135,7 +135,8 @@ private fun ReceivedMessage.logReceived() {
 private fun ReceivedMessage.toProcessedMessage(xmlPayload: String): ProcessedMessage =
     ProcessedMessage(
         key = messageId.toString(),
-        payload = xmlPayload
+        payload = xmlPayload,
+        sourceSystem = sourceSystem!!
     )
 
 private fun ReceivedMessage.toErrorMessage(errors: List<ProcessingError>): ErrorMessage =
